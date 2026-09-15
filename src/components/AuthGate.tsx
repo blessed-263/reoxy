@@ -49,7 +49,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   if (state === 'checking') {
     return (
-      <div className="min-h-screen bg-[#0b1220] text-slate-400 flex items-center justify-center text-[14px]">
+      <div className="min-h-screen bg-[#eef1f5] text-slate-500 flex items-center justify-center text-[14px]">
         Checking authorization…
       </div>
     );
