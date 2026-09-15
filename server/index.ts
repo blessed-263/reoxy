@@ -11,6 +11,7 @@ const port = Number(process.env.PORT) || 8787;
 const frontend = (process.env.FRONTEND_URL || process.env.APP_URL || '').replace(/\/$/, '');
 
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
 app.use(corsMiddleware);
 app.options('*', corsMiddleware);
 app.use(createApiExpress());

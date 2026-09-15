@@ -55,6 +55,7 @@ try {
 
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { AuthGate } from './components/AuthGate';
 import App from './App.tsx';
 import {VerifyPage} from './verify/VerifyPage.tsx';
 import './index.css';
@@ -63,7 +64,7 @@ const isVerifyRoute = window.location.pathname.startsWith('/verify/');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isVerifyRoute ? <VerifyPage /> : <App />}
+    {isVerifyRoute ? <VerifyPage /> : <AuthGate><App /></AuthGate>}
   </StrictMode>,
 );
 

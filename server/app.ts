@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import express, { Router, type Request, type Response, type NextFunction } from 'express';
 import { ensureSchema, pool } from './db.ts';
 import { corsMiddleware } from './cors.ts';
 import { deleteReceipt, getReceipt, listReceipts, upsertReceipt } from './receiptsRepo.ts';
-import { deleteItinerary, getItinerary, listItineraries, upsertItinerary } from './itinerariesRepo.ts';
+import { handleLogin, handleLogout, handleMe, requireAuth } from './auth.ts';
 
 const apiRouter = Router();
 let schemaReady: Promise<void> | null = null;
@@ -17,19 +18,15 @@ function ready() {
   return schemaReady;
 }
 
-function apiKeyOk(req: Request) {
-  const expected = process.env.API_KEY?.trim();
-  if (!expected) return true;
-  return req.header('x-api-key') === expected;
-}
-
 apiRouter.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path === '/health' || req.path.startsWith('/public/')) return next();
-  if (!apiKeyOk(req)) {
-    return res.status(401).json({ error: 'Invalid or missing API key' });
-  }
-  next();
+  if (req.path === '/auth/login' || req.path === '/auth/logout' || req.path === '/auth/me') return next();
+  return requireAuth(req, res, next);
 });
+
+apiRouter.post('/auth/login', handleLogin);
+apiRouter.post('/auth/logout', handleLogout);
+apiRouter.get('/auth/me', handleMe);
 
 apiRouter.get('/health', async (_req, res) => {
   if (!pool) {
@@ -137,6 +134,8 @@ export { apiRouter };
 
 export function createApiExpress() {
   const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
   app.use(corsMiddleware);
   app.options('*', corsMiddleware);
   app.use(express.json({ limit: '2mb' }));

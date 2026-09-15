@@ -99,6 +99,7 @@ function mapItinerary(
     totalPrice: num(row.total_price),
     currency: str(row.currency, 'RUB'),
     paymentStatus: str(row.payment_status, 'pending'),
+    paymentMethod: str(row.payment_method, 'bank_card'),
     amountPaid: num(row.amount_paid),
     fareBreakdown: {
       baseFare: num(row.base_fare),
@@ -227,10 +228,10 @@ export async function upsertItinerary(id: string, body: Body) {
     await cx.query(
       `INSERT INTO itineraries (
          id, pnr, title, destination, start_date, end_date, total_days, total_nights, status,
-         total_price, currency, payment_status, amount_paid, base_fare, taxes_and_fees,
+         total_price, currency, payment_status, payment_method, amount_paid, base_fare, taxes_and_fees,
          fuel_surcharge, service_fee, baggage_policy, check_in_policy, agent_name, agent_phone,
          agent_email, emergency_phone, created_at, updated_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW())
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
        ON CONFLICT (id) DO UPDATE SET
          pnr = EXCLUDED.pnr,
          title = EXCLUDED.title,
@@ -243,6 +244,7 @@ export async function upsertItinerary(id: string, body: Body) {
          total_price = EXCLUDED.total_price,
          currency = EXCLUDED.currency,
          payment_status = EXCLUDED.payment_status,
+         payment_method = EXCLUDED.payment_method,
          amount_paid = EXCLUDED.amount_paid,
          base_fare = EXCLUDED.base_fare,
          taxes_and_fees = EXCLUDED.taxes_and_fees,
@@ -268,6 +270,7 @@ export async function upsertItinerary(id: string, body: Body) {
         num(body.totalPrice),
         str(body.currency, 'RUB'),
         str(body.paymentStatus, 'pending'),
+        str(body.paymentMethod, 'bank_card'),
         num(body.amountPaid),
         num(fare.baseFare),
         num(fare.taxesAndFees),

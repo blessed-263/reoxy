@@ -4,9 +4,10 @@ import { MicorLogo } from '../components/logos/MicorLogo';
 import { fetchPublicItinerary, fetchPublicReceipt } from '../api/client';
 import { Receipt } from '../types';
 import { Itinerary } from '../types/itinerary';
-import { formatCurrency } from '../utils/formatters';
-import { formatItineraryCurrency, formatRussianDate } from '../utils/itineraryFormatters';
-import { STATUS_LABELS } from '../data/micorTravelsInfo';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatItineraryCurrency, formatShortDate } from '../utils/itineraryFormatters';
+import { paymentMethodLabelRu } from '../utils/paymentInstructions';
+import { CABIN_CLASS_LABELS, PAYMENT_STATUS_LABELS, STATUS_LABELS } from '../data/micorTravelsInfo';
 
 function parseVerifyPath(pathname: string) {
   const parts = pathname.split('/').filter(Boolean);
@@ -19,10 +20,23 @@ function parseVerifyPath(pathname: string) {
   return null;
 }
 
-const RECEIPT_PAYMENT: Record<string, string> = {
-  paid: 'Оплачено',
+function humanizeVerifyError(message: string, kind?: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes('not found') || lower.includes('не найден')) {
+    return kind === 'ticket'
+      ? 'Билет не найден в реестре.'
+      : 'Квитанция не найдена в реестре.';
+  }
+  if (lower.includes('database') || lower.includes('503') || lower.includes('vite_api_url')) {
+    return 'Сервер проверки временно недоступен. Повторите попытку позже.';
+  }
+  return message;
+}
+
+const RECEIPT_STATUS_RU: Record<string, string> = {
+  paid: 'Оплачено полностью',
   partial: 'Частичная оплата',
-  unpaid: 'Не оплачено',
+  unpaid: 'Ожидает оплаты',
 };
 
 export const VerifyPage: React.FC = () => {
@@ -40,8 +54,8 @@ export const VerifyPage: React.FC = () => {
     }
 
     const run = async () => {
-      if (!import.meta.env.VITE_API_URL) {
-        setError('Не задан адрес API. Укажите VITE_API_URL на Vercel.');
+      if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
+        setError(humanizeVerifyError('Задайте VITE_API_URL на Vercel — адрес Railway API для проверки документов.'));
         setStatus('error');
         return;
       }
@@ -56,7 +70,7 @@ export const VerifyPage: React.FC = () => {
         setStatus('ok');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Не найдено';
-        setError(message);
+        setError(humanizeVerifyError(message, parsed.kind));
         const lower = message.toLowerCase();
         setStatus(lower.includes('not found') || lower.includes('не найден') ? 'missing' : 'error');
       }
@@ -66,6 +80,10 @@ export const VerifyPage: React.FC = () => {
   }, [pathname]);
 
   const isTicket = parsed?.kind === 'ticket';
+  const ticketStatus = ticket ? (STATUS_LABELS[ticket.status] || STATUS_LABELS.confirmed) : null;
+  const ticketPayment = ticket
+    ? (PAYMENT_STATUS_LABELS[ticket.paymentStatus] || PAYMENT_STATUS_LABELS.pending)
+    : null;
 
   return (
     <div className="min-h-screen bg-[#eef1f5] text-slate-800">
@@ -89,7 +107,7 @@ export const VerifyPage: React.FC = () => {
           <div className="rounded-2xl border border-rose-100 bg-white p-8 text-center">
             <div className="text-lg font-semibold text-slate-900">Этот QR-код недействителен</div>
             <p className="text-[14px] text-slate-500 mt-2">
-              {error || 'Квитанция или билет не найдены в живом реестре.'}
+              {error || 'В реестре не найдена соответствующая квитанция или билет.'}
             </p>
           </div>
         )}
@@ -101,14 +119,12 @@ export const VerifyPage: React.FC = () => {
                 Квитанция подтверждена
               </div>
               <div className="text-xl font-semibold text-slate-900 mt-1">{receipt.id}</div>
-              <div className="text-[14px] text-slate-500">{formatRussianDate(receipt.date, false)}</div>
+              <div className="text-[14px] text-slate-500">{formatDate(receipt.date)}</div>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-[14px] space-y-1">
-              <div><span className="text-slate-500">Клиент</span> · {receipt.client?.fullName || '—'}</div>
-              <div>
-                <span className="text-slate-500">Статус</span> ·{' '}
-                {RECEIPT_PAYMENT[receipt.paymentStatus] || receipt.paymentStatus}
-              </div>
+              <div><span className="text-slate-500">Заказчик</span> · {receipt.client?.fullName || '—'}</div>
+              <div><span className="text-slate-500">Статус</span> · {RECEIPT_STATUS_RU[receipt.paymentStatus] || receipt.paymentStatus}</div>
+              <div><span className="text-slate-500">Способ оплаты</span> · {paymentMethodLabelRu(receipt.paymentMethod)}</div>
               <div><span className="text-slate-500">Итого</span> · {formatCurrency(receipt.total, receipt.currency)}</div>
             </div>
             <ul className="text-[14px] space-y-1.5">
@@ -133,16 +149,30 @@ export const VerifyPage: React.FC = () => {
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-[14px] space-y-1">
               <div>
-                <span className="text-slate-500">Даты</span> · {formatRussianDate(ticket.startDate, false)} — {formatRussianDate(ticket.endDate, false)}
+                <span className="text-slate-500">Даты</span> · {formatShortDate(ticket.startDate)} — {formatShortDate(ticket.endDate)}
               </div>
               <div>
-                <span className="text-slate-500">Статус</span> ·{' '}
-                {STATUS_LABELS[ticket.status]?.label || ticket.status}
+                <span className="text-slate-500">Статус</span> · {ticketStatus?.label || ticket.status}
+              </div>
+              <div>
+                <span className="text-slate-500">Оплата</span> · {ticketPayment?.label || ticket.paymentStatus}
+                {' · '}
+                {paymentMethodLabelRu(ticket.paymentMethod || 'bank_card')}
               </div>
               <div>
                 <span className="text-slate-500">Тариф</span> · {formatItineraryCurrency(ticket.totalPrice, ticket.currency)}
               </div>
             </div>
+            {(ticket.flights || []).length > 0 && (
+              <ul className="text-[14px] space-y-1.5">
+                {ticket.flights.map((flight) => (
+                  <li key={flight.id} className="text-slate-800">
+                    {flight.flightNumber} · {flight.departureAirport || flight.departureCity} → {flight.arrivalAirport || flight.arrivalCity}
+                    {flight.cabinClass ? ` · ${CABIN_CLASS_LABELS[flight.cabinClass] || flight.cabinClass}` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
             <ul className="text-[14px] space-y-1.5">
               {(ticket.travelers || []).map((traveler) => (
                 <li key={traveler.id} className="text-slate-800">{traveler.name}</li>

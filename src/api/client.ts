@@ -2,25 +2,29 @@ import { Receipt } from '../types';
 import { Itinerary } from '../types/itinerary';
 import { normalizePublicUrl } from '../utils/normalizeUrl';
 
-const API_BASE = normalizePublicUrl(import.meta.env.VITE_API_URL);
+function apiBase() {
+  if (typeof window !== 'undefined') return '';
+  return normalizePublicUrl(import.meta.env.VITE_API_URL);
+}
 
 function headers() {
-  const extra: Record<string, string> = {
+  return {
     'Content-Type': 'application/json',
   };
-  const key = import.meta.env.VITE_API_KEY;
-  if (key) extra['x-api-key'] = key;
-  return extra;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       ...headers(),
       ...(init?.headers || {}),
     },
   });
+  if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/api/auth/')) {
+    window.dispatchEvent(new Event('reoxy:unauthorized'));
+  }
   if (res.status === 204) {
     return undefined as T;
   }
@@ -30,6 +34,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
   return body as T;
+}
+
+export function fetchDeskSession() {
+  return request<{ ok: boolean; user: string }>('/api/auth/me');
+}
+
+export function loginDesk(username: string, password: string) {
+  return request<{ ok: boolean; user: string }>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  }).then((body) => body.user);
+}
+
+export function logoutDesk() {
+  return request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
 }
 
 export async function checkApiHealth(): Promise<boolean> {

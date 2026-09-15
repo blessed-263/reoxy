@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { REOXY_SERVICES, COMMON_DOCUMENT_TYPES, COMMON_LANGUAGES } from '../data/servicePresets';
 import { formatCurrency } from '../utils/formatters';
+import { PAYMENT_METHOD_OPTIONS } from '../utils/paymentInstructions';
 
 interface ReceiptFormProps {
   receipt: Receipt;
@@ -634,12 +635,9 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
               onChange={(e) => onChange({ ...receipt, paymentMethod: e.target.value as PaymentMethod })}
               className="ui-field"
             >
-              <option value="sberbank">Sberbank / SBP</option>
-              <option value="tinkoff">Tinkoff Bank</option>
-              <option value="bank_card">Bank Card (Debit/Credit)</option>
-              <option value="cash">Cash at Consular Desk</option>
-              <option value="ecocash">EcoCash / Zimbabwe Mobile</option>
-              <option value="wire_transfer">University / Wire Transfer</option>
+              {PAYMENT_METHOD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
           <div>

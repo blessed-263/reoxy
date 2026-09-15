@@ -95,6 +95,7 @@ export const createEmptyItinerary = (): Itinerary => {
     totalPrice: 64200,
     currency: 'RUB',
     paymentStatus: 'paid',
+    paymentMethod: 'bank_card',
     amountPaid: 64200,
     baggagePolicy: '1 место до 23 кг (сумма 3 измерений до 158 см) + ручная кладь до 8 кг (55×40×23 см).',
     checkInPolicy: 'Онлайн-регистрация открыта за 24 ч. Стойки в аэропорту закрываются за 60 мин, гейты за 20 мин.',

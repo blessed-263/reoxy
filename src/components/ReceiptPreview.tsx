@@ -18,6 +18,7 @@ import { A4DocumentViewer } from './document/A4DocumentViewer';
 import { ReOxyLogo } from './logos/ReOxyLogo';
 import { QRCodeView } from './common/QRCodeView';
 import { receiptVerifyUrl } from '../utils/publicUrls';
+import { receiptPaymentInstructions } from '../utils/paymentInstructions';
 import { QrCode } from 'lucide-react';
 
 interface ReceiptPreviewProps {
@@ -40,12 +41,16 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const safeItems = Array.isArray(receipt.items) ? receipt.items : [];
 
   const verificationUrl = useMemo(() => receiptVerifyUrl(receipt.id), [receipt.id]);
+  const payment = useMemo(
+    () => receiptPaymentInstructions(receipt.paymentMethod, receipt.id),
+    [receipt.paymentMethod, receipt.id]
+  );
 
   // Offline JSON verification payload
   const jsonVerificationPayload = useMemo(() => {
     return JSON.stringify({
-      issuer: 'AO РеOкси',
-      reg: '2024/7749',
+      issuer: REOXY_COMPANY.name,
+      reg: REOXY_COMPANY.registrationNumber.replace(/^REG\s*№\s*/i, ''),
       docket: receipt.id,
       date: receipt.date,
       client: receipt.client?.fullName || 'Client',
@@ -196,7 +201,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                 {/* Header with authentic ReOxy vector logo */}
                 <A4Header
                   logoNode={<ReOxyLogo size="md" />}
-                  brandRegistration="REG № 2024/7749"
+                  brandRegistration={REOXY_COMPANY.registrationNumber}
                   documentCategory="ОФИЦИАЛЬНАЯ ВЕДОМОСТЬ РАСХОДОВ И КВИТАНЦИЯ"
                   documentTitle="Фискальная квитанция / Receipt"
                   documentSubtext={`Docket Ref: ${receipt.id} • ${formatDate(receipt.date)}`}
@@ -251,7 +256,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                     sectionTitle: 'Исполнитель / Bureau',
                     name: REOXY_COMPANY.name,
                     secondaryTitle: 'Бюро сертифицированных переводов',
-                    idNumber: 'REG № 2024/7749',
+                    idNumber: REOXY_COMPANY.registrationNumber,
                     phone: REOXY_COMPANY.contacts.primaryPhone,
                     email: REOXY_COMPANY.contacts.email
                   }}
@@ -301,11 +306,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                   totalLabel="ИТОГО / TOTAL"
                   totalAmount={formatCurrency(receipt.total, receipt.currency)}
                   bankingDetails={{
-                    bankName: 'Сбербанк / Т-Банк (СБП)',
-                    accountNumber: '+7 985 052-04-66',
-                    referenceCode: `REOXY-${receipt.id}`
+                    bankLabel: payment.bankLabel,
+                    bankName: payment.bankName,
+                    accountName: payment.accountName,
+                    accountLabel: payment.accountLabel,
+                    accountNumber: payment.accountNumber,
+                    referenceCode: payment.referenceCode
                   }}
-                  paymentNotice="Официальный расчетный документ ReOxy. Переводы скрепляются печатью бюро."
+                  paymentNotice={payment.paymentNotice}
                 />
 
                 {/* Signatures with Integrated Mobile Verification QR Code */}

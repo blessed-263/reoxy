@@ -27,9 +27,6 @@ import {
   saveReceipt as saveReceiptRemote,
 } from './api/client';
 
-const REOXY_STORAGE_KEY = 'reoxy_receipts_v1';
-const MICOR_STORAGE_KEY = 'micor_itineraries_v1';
-
 type StorageMode = 'connecting' | 'cloud' | 'local';
 
 const createDefaultReceipt = (): Receipt => {
@@ -113,32 +110,6 @@ export default function App() {
   const [isReceiptShareOpen, setIsReceiptShareOpen] = useState(false);
   const [receiptSavedAlert, setReceiptSavedAlert] = useState(false);
 
-  const readLocalReceipts = (): Receipt[] => {
-    try {
-      const saved = localStorage.getItem(REOXY_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to parse saved receipts', e);
-    }
-    return [];
-  };
-
-  const readLocalItineraries = (): Itinerary[] => {
-    try {
-      const saved = localStorage.getItem(MICOR_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to parse saved itineraries', e);
-    }
-    return [];
-  };
-
   useEffect(() => {
     let cancelled = false;
 
@@ -165,13 +136,10 @@ export default function App() {
         }
       }
 
-      const localReceipts = readLocalReceipts();
-      const localItineraries = readLocalItineraries();
-      setReceipts(localReceipts);
-      setItineraries(localItineraries);
-      if (localReceipts[0]) setCurrentReceipt(localReceipts[0]);
-      if (localItineraries[0]) setCurrentItinerary(localItineraries[0]);
-      setStorageMode('local');
+      if (cancelled) return;
+      setReceipts([]);
+      setItineraries([]);
+      setStorageMode('cloud');
     };
 
     void hydrate();
@@ -179,24 +147,6 @@ export default function App() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (storageMode !== 'local') return;
-    try {
-      localStorage.setItem(MICOR_STORAGE_KEY, JSON.stringify(itineraries));
-    } catch (e) {
-      console.error('Failed to save itineraries', e);
-    }
-  }, [itineraries, storageMode]);
-
-  useEffect(() => {
-    if (storageMode !== 'local') return;
-    try {
-      localStorage.setItem(REOXY_STORAGE_KEY, JSON.stringify(receipts));
-    } catch (e) {
-      console.error('Failed to save receipts', e);
-    }
-  }, [receipts, storageMode]);
 
   // =====================
   // ACTIONS HANDLERS

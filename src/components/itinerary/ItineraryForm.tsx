@@ -23,6 +23,7 @@ import {
   CABIN_CLASS_LABELS
 } from '../../data/micorTravelsInfo';
 import { calculateDaysAndNights } from '../../utils/itineraryFormatters';
+import { PAYMENT_METHOD_OPTIONS } from '../../utils/paymentInstructions';
 import { FlightRouteArrow } from './FlightRouteArrow';
 import { PlaceSearchField } from '../common/PlaceSearchField';
 import { searchFlightPlaces } from '../../data/places';
@@ -852,6 +853,19 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
                 <option value="pending">Ожидает оплаты</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="ui-label">Способ оплаты</label>
+            <select
+              value={itinerary.paymentMethod || 'bank_card'}
+              onChange={(e) => updateField('paymentMethod', e.target.value as Itinerary['paymentMethod'])}
+              className="w-full ui-field"
+            >
+              {PAYMENT_METHOD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.labelRu}</option>
+              ))}
+            </select>
           </div>
         </div>
       )}

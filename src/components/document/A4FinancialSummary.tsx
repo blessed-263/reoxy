@@ -14,11 +14,15 @@ interface A4FinancialSummaryProps {
   totalAmount: string;
   paymentNotice?: string;
   bankingDetails?: {
+    heading?: string;
+    bankLabel?: string;
     bankName?: string;
     accountName?: string;
+    accountLabel?: string;
     accountNumber?: string;
     referenceCode?: string;
   };
+  qrNode?: React.ReactNode;
   className?: string;
   theme?: 'reoxy' | 'micor' | 'minimal';
 }
@@ -29,6 +33,7 @@ export const A4FinancialSummary: React.FC<A4FinancialSummaryProps> = ({
   totalAmount,
   paymentNotice,
   bankingDetails,
+  qrNode,
   className = '',
   theme = 'minimal'
 }) => {
@@ -39,25 +44,32 @@ export const A4FinancialSummary: React.FC<A4FinancialSummaryProps> = ({
     <div className={`avoid-break grid grid-cols-1 sm:grid-cols-12 gap-4 ${isReoxy ? 'bg-[#f0f9ff] px-4 py-3 rounded-2xl border border-[#bae6fd]' : 'border-t border-[#0f172a] pt-3 mb-3.5'} ${className}`}>
       {/* Left Column: Settlement & Remittance Details */}
       <div className={`sm:col-span-7 space-y-1.5 ${isReoxy ? 'text-[12px]' : 'text-xs'}`}>
+        <div className={qrNode ? 'flex gap-2 items-stretch' : ''}>
         {bankingDetails && (
-          <div className={`${isReoxy ? 'bg-white rounded-xl p-3' : 'bg-[#f8fafc] p-2.5'} border border-[#e2e8f0] space-y-1 font-mono ${isReoxy ? 'text-[12px] leading-snug' : 'text-[11px]'}`}>
+          <div className={`flex-1 min-w-0 ${isReoxy ? 'bg-white rounded-xl p-3' : 'bg-[#f8fafc] p-2.5'} border border-[#e2e8f0] space-y-1 font-mono ${isReoxy ? 'text-[12px] leading-snug' : 'text-[11px]'}`}>
             <div className={`${isReoxy ? 'text-[9px]' : 'text-[9px]'} uppercase tracking-wider text-[#64748b] font-semibold`}>
-              РЕКВИЗИТЫ ПЛАТЕЖА / REMITTANCE INSTRUCTIONS
+              {bankingDetails.heading || 'РЕКВИЗИТЫ ПЛАТЕЖА / PAYMENT INSTRUCTIONS'}
             </div>
             {bankingDetails.bankName && (
-              <div className="text-[#334155]">Банк: <span className="font-semibold text-[#0f172a]">{bankingDetails.bankName}</span></div>
+              <div className="text-[#334155]">{bankingDetails.bankLabel || 'Банк'}: <span className="font-semibold text-[#0f172a]">{bankingDetails.bankName}</span></div>
             )}
             {bankingDetails.accountName && (
               <div className="text-[#334155]">Получатель: <span className="text-[#0f172a]">{bankingDetails.accountName}</span></div>
             )}
             {bankingDetails.accountNumber && (
-              <div className="text-[#334155]">Счет / Тел: <span className="font-bold text-[#0f172a]">{bankingDetails.accountNumber}</span></div>
+              <div className="text-[#334155]">{bankingDetails.accountLabel || 'Счёт / Тел'}: <span className="font-bold text-[#0f172a]">{bankingDetails.accountNumber}</span></div>
             )}
             {bankingDetails.referenceCode && (
               <div className="text-[#334155]">Назначение: <span className="text-[#0f172a] font-semibold">{bankingDetails.referenceCode}</span></div>
             )}
           </div>
         )}
+        {qrNode ? (
+          <div className={`shrink-0 flex flex-col items-center justify-center ${isReoxy ? 'bg-white rounded-xl px-2 py-2' : 'bg-white px-1.5 py-1.5'} border border-[#e2e8f0]`}>
+            {qrNode}
+          </div>
+        ) : null}
+        </div>
 
         {paymentNotice && (
           <p className={`${isReoxy ? 'text-[11px] leading-snug' : 'text-[10px] leading-relaxed font-mono'} text-[#64748b]`}>

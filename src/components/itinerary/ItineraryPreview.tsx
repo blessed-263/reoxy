@@ -1,9 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Itinerary } from '../../types/itinerary';
 import { 
-  MICOR_TRAVELS_INFO, 
   CABIN_CLASS_LABELS, 
-  STATUS_LABELS, 
   PAYMENT_STATUS_LABELS
 } from '../../data/micorTravelsInfo';
 import { 
@@ -13,7 +11,6 @@ import {
 import { A4Sheet } from '../document/A4Sheet';
 import { A4Header } from '../document/A4Header';
 import { A4MetaGrid } from '../document/A4MetaGrid';
-import { A4PartyDetails } from '../document/A4PartyDetails';
 import { A4Table, ColumnDef } from '../document/A4Table';
 import { A4FinancialSummary } from '../document/A4FinancialSummary';
 import { A4Footer } from '../document/A4Footer';
@@ -21,6 +18,7 @@ import { A4DocumentViewer } from '../document/A4DocumentViewer';
 import { MicorLogo } from '../logos/MicorLogo';
 import { QRCodeView } from '../common/QRCodeView';
 import { ticketVerifyUrl } from '../../utils/publicUrls';
+import { ticketPaymentInstructions, paymentMethodLabelRu } from '../../utils/paymentInstructions';
 import { FlightRouteArrow } from './FlightRouteArrow';
 import { 
   Plane, 
@@ -29,8 +27,7 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   ShieldCheck, 
-  Info,
-  Calendar
+  Info
 } from 'lucide-react';
 
 interface ItineraryPreviewProps {
@@ -47,9 +44,15 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
   const filename = `FlightTicket-${pnrCode}.pdf`;
   const safeFlights = Array.isArray(itinerary.flights) ? itinerary.flights : [];
   const safeTravelers = Array.isArray(itinerary.travelers) ? itinerary.travelers : [];
-
-  // PNR flight verification URL
-  const pnrVerificationUrl = ticketVerifyUrl(pnrCode);
+  const verificationUrl = useMemo(
+    () => ticketVerifyUrl(itinerary.id),
+    [itinerary.id]
+  );
+  const payment = useMemo(
+    () => ticketPaymentInstructions(itinerary.paymentMethod, pnrCode, itinerary.paymentStatus),
+    [itinerary.paymentMethod, itinerary.paymentStatus, pnrCode]
+  );
+  const paymentStatusLabel = PAYMENT_STATUS_LABELS[itinerary.paymentStatus] || PAYMENT_STATUS_LABELS.paid;
 
   // Passenger Manifest Columns
   const passengerColumns: ColumnDef<typeof safeTravelers[0]>[] = [
@@ -237,15 +240,15 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                     value: `${formatShortDate(itinerary.startDate)} — ${formatShortDate(itinerary.endDate)}`,
                     isMono: true
                   },
-                  {
-                    label: 'Статус выписки билетов',
-                    value: (
-                      <span className="text-[#16a34a] font-bold uppercase">
-                        ВЫПИСАН И ПОДТВЕРЖДЕН (OK)
-                      </span>
-                    ),
-                    isMono: true
-                  }
+                    {
+                      label: 'Статус оплаты / способ',
+                      value: (
+                        <span className="text-[#0f172a] font-bold uppercase">
+                          {paymentStatusLabel.label} · {paymentMethodLabelRu(itinerary.paymentMethod)}
+                        </span>
+                      ),
+                      isMono: true
+                    }
                 ]}
               />
 
@@ -320,12 +323,22 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                 totalLabel="ИТОГО К ОПЛАТЕ / TOTAL FARE:"
                 totalAmount={formatItineraryCurrency(itinerary.totalPrice, itinerary.currency)}
                 bankingDetails={{
-                  bankName: 'IATA BSP Billing Settlement Plan / ПАО Сбербанк',
-                  accountName: MICOR_TRAVELS_INFO.legalName,
-                  accountNumber: MICOR_TRAVELS_INFO.phone,
-                  referenceCode: `PNR-${pnrCode}`
+                  bankLabel: payment.bankLabel,
+                  bankName: payment.bankName,
+                  accountName: payment.accountName,
+                  accountLabel: payment.accountLabel,
+                  accountNumber: payment.accountNumber,
+                  referenceCode: payment.referenceCode
                 }}
-                paymentNotice="Электронный пассажирский билет оформлен в соответствии с Резолюцией IATA 722g. Форма оплаты: Безналичный расчет / Банковская карта."
+                paymentNotice={payment.paymentNotice}
+                qrNode={
+                  <div className="flex flex-col items-center justify-center">
+                    <QRCodeView value={verificationUrl} size={64} darkColor="#0f172a" />
+                    <span className="font-mono text-[7px] uppercase font-bold text-[#0f172a] mt-1 tracking-wider">
+                      ПРОВЕРКА QR
+                    </span>
+                  </div>
+                }
               />
 
               {/* A4 Footer */}
@@ -446,14 +459,14 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                       Статус электронного билета: VALIDATED & ISSUED • Реестр IATA: 92-2 1894 4
                     </div>
                     <div className="text-[#0284c7] font-semibold text-[9px] pt-0.5">
-                      {pnrVerificationUrl.replace(/^https?:\/\//, '')} • Scan the QR to verify this ticket online
+                      {verificationUrl.replace(/^https?:\/\//, '')} • Отсканируйте QR, чтобы проверить билет онлайн
                     </div>
                   </div>
 
                   <div className="shrink-0 bg-white p-1 border border-[#e2e8f0] flex flex-col items-center">
-                    <QRCodeView value={pnrVerificationUrl} size={64} darkColor="#0f172a" />
+                    <QRCodeView value={verificationUrl} size={64} darkColor="#0f172a" />
                     <span className="font-mono text-[6px] text-[#64748b] mt-0.5 font-bold uppercase">
-                      SCAN FLIGHT PNR
+                      ПРОВЕРКА PNR
                     </span>
                   </div>
                 </div>

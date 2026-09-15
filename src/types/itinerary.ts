@@ -1,4 +1,7 @@
+import { PaymentMethod } from '../types';
+
 export type ItineraryCurrency = 'RUB' | 'USD' | 'EUR' | 'AED';
+export type ItineraryPaymentMethod = PaymentMethod;
 
 export type ItineraryStatus = 'confirmed' | 'draft' | 'in_progress' | 'completed';
 
@@ -100,6 +103,7 @@ export interface Itinerary {
   totalPrice: number;
   currency: ItineraryCurrency;
   paymentStatus: 'paid' | 'deposit_paid' | 'pending';
+  paymentMethod?: ItineraryPaymentMethod;
   amountPaid: number;
   fareBreakdown?: FareBreakdown;
   baggagePolicy?: string;

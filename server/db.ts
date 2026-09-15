@@ -83,6 +83,11 @@ export async function ensureSchema() {
   if (!pool) return;
   await migrateLegacyJson();
   await pool.query(SCHEMA_SQL);
+  if (!(await hasColumn('itineraries', 'payment_method'))) {
+    await pool.query(
+      `ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'bank_card'`
+    );
+  }
 }
 
 export function requirePool() {

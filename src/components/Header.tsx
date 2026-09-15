@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-  History,
-  Plus,
-  Plane,
-  FileText,
-  FileDown
-} from 'lucide-react';
+import { History, Plus, Plane, FileText, FileDown, LogOut } from 'lucide-react';
+import { useDeskAuth } from './AuthGate';
 import { ReOxyLogo } from './logos/ReOxyLogo';
 import { MicorLogo } from './logos/MicorLogo';
 
@@ -35,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   storageMode = 'connecting'
 }) => {
   const isMicor = currentApp === 'micor';
+  const { logout } = useDeskAuth();
 
   return (
     <header className="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
@@ -142,6 +138,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Plus className="w-4 h-4" />
             New
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
           </button>
 
           {activeTab === 'editor' && onDownloadPdf && (

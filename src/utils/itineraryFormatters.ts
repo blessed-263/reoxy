@@ -1,5 +1,6 @@
 import { Itinerary, ItineraryCurrency } from '../types/itinerary';
 import { CABIN_CLASS_LABELS, MICOR_TRAVELS_INFO } from '../data/micorTravelsInfo';
+import { paymentMethodLabelRu } from './paymentInstructions';
 
 export const formatRussianDate = (dateStr: string, includeWeekday: boolean = true): string => {
   if (!dateStr) return '';
@@ -95,7 +96,8 @@ export const generateItineraryShareText = (it: Itinerary): string => {
     ` • ${it.checkInPolicy || 'Онлайн-регистрация за 24 ч, стойки в аэропорту закрываются за 60 мин.'}\n\n`;
 
   const costBlock = `💰 *СТОИМОСТЬ ПЕРЕЛЕТА:* ${formatItineraryCurrency(it.totalPrice, it.currency)}\n` +
-    `*Статус оплаты:* ${it.paymentStatus === 'paid' ? 'Оплачено 100%' : it.paymentStatus === 'deposit_paid' ? `Внесен депозит (${formatItineraryCurrency(it.amountPaid, it.currency)})` : 'Ожидает оплаты'}\n\n`;
+    `*Статус оплаты:* ${it.paymentStatus === 'paid' ? 'Оплачено 100%' : it.paymentStatus === 'deposit_paid' ? `Внесен депозит (${formatItineraryCurrency(it.amountPaid, it.currency)})` : 'Ожидает оплаты'}\n` +
+    `*Способ оплаты:* ${paymentMethodLabelRu(it.paymentMethod || 'bank_card')}\n\n`;
 
   const footer = `📞 *КРУГЛОСУТОЧНАЯ ПОДДЕРЖКА ПАССАЖИРОВ:*\n` +
     `Горячая линия 24/7: ${it.emergencyPhone || MICOR_TRAVELS_INFO.emergencyHotline}\n` +

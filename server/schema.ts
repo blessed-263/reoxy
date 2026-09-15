@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS itineraries (
   total_price NUMERIC(12,2) NOT NULL DEFAULT 0,
   currency TEXT NOT NULL DEFAULT 'RUB',
   payment_status TEXT NOT NULL DEFAULT 'pending',
+  payment_method TEXT NOT NULL DEFAULT 'bank_card',
   amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
   base_fare NUMERIC(12,2) NOT NULL DEFAULT 0,
   taxes_and_fees NUMERIC(12,2) NOT NULL DEFAULT 0,
