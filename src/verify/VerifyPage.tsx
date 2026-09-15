@@ -4,8 +4,9 @@ import { MicorLogo } from '../components/logos/MicorLogo';
 import { fetchPublicItinerary, fetchPublicReceipt } from '../api/client';
 import { Receipt } from '../types';
 import { Itinerary } from '../types/itinerary';
-import { formatCurrency, formatDate } from '../utils/formatters';
-import { formatItineraryCurrency, formatShortDate } from '../utils/itineraryFormatters';
+import { formatCurrency } from '../utils/formatters';
+import { formatItineraryCurrency, formatRussianDate } from '../utils/itineraryFormatters';
+import { STATUS_LABELS } from '../data/micorTravelsInfo';
 
 function parseVerifyPath(pathname: string) {
   const parts = pathname.split('/').filter(Boolean);
@@ -17,6 +18,12 @@ function parseVerifyPath(pathname: string) {
   }
   return null;
 }
+
+const RECEIPT_PAYMENT: Record<string, string> = {
+  paid: 'Оплачено',
+  partial: 'Частичная оплата',
+  unpaid: 'Не оплачено',
+};
 
 export const VerifyPage: React.FC = () => {
   const pathname = window.location.pathname;
@@ -34,7 +41,7 @@ export const VerifyPage: React.FC = () => {
 
     const run = async () => {
       if (!import.meta.env.VITE_API_URL) {
-        setError('Set VITE_API_URL on Vercel to your Railway API URL.');
+        setError('Не задан адрес API. Укажите VITE_API_URL на Vercel.');
         setStatus('error');
         return;
       }
@@ -48,9 +55,10 @@ export const VerifyPage: React.FC = () => {
         }
         setStatus('ok');
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Not found';
+        const message = err instanceof Error ? err.message : 'Не найдено';
         setError(message);
-        setStatus(message.toLowerCase().includes('not found') ? 'missing' : 'error');
+        const lower = message.toLowerCase();
+        setStatus(lower.includes('not found') || lower.includes('не найден') ? 'missing' : 'error');
       }
     };
 
@@ -65,7 +73,7 @@ export const VerifyPage: React.FC = () => {
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           {isTicket ? <MicorLogo size="sm" variant="dark" /> : <ReOxyLogo size="sm" variant="dark" />}
           <span className="text-[12px] font-semibold rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1">
-            Official verify
+            Официальная проверка
           </span>
         </div>
       </header>
@@ -73,15 +81,15 @@ export const VerifyPage: React.FC = () => {
       <main className="max-w-lg mx-auto p-4 sm:p-6">
         {status === 'loading' && (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-            Checking this document…
+            Проверяем документ…
           </div>
         )}
 
         {status !== 'loading' && status !== 'ok' && (
           <div className="rounded-2xl border border-rose-100 bg-white p-8 text-center">
-            <div className="text-lg font-semibold text-slate-900">This QR is not valid</div>
+            <div className="text-lg font-semibold text-slate-900">Этот QR-код недействителен</div>
             <p className="text-[14px] text-slate-500 mt-2">
-              {error || 'No matching receipt or ticket was found in the live registry.'}
+              {error || 'Квитанция или билет не найдены в живом реестре.'}
             </p>
           </div>
         )}
@@ -89,14 +97,19 @@ export const VerifyPage: React.FC = () => {
         {status === 'ok' && receipt && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div>
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-sky-700">Verified receipt</div>
+              <div className="text-[12px] font-semibold uppercase tracking-wider text-sky-700">
+                Квитанция подтверждена
+              </div>
               <div className="text-xl font-semibold text-slate-900 mt-1">{receipt.id}</div>
-              <div className="text-[14px] text-slate-500">{formatDate(receipt.date)}</div>
+              <div className="text-[14px] text-slate-500">{formatRussianDate(receipt.date, false)}</div>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-[14px] space-y-1">
-              <div><span className="text-slate-500">Client</span> · {receipt.client?.fullName || '—'}</div>
-              <div><span className="text-slate-500">Status</span> · {receipt.paymentStatus}</div>
-              <div><span className="text-slate-500">Total</span> · {formatCurrency(receipt.total, receipt.currency)}</div>
+              <div><span className="text-slate-500">Клиент</span> · {receipt.client?.fullName || '—'}</div>
+              <div>
+                <span className="text-slate-500">Статус</span> ·{' '}
+                {RECEIPT_PAYMENT[receipt.paymentStatus] || receipt.paymentStatus}
+              </div>
+              <div><span className="text-slate-500">Итого</span> · {formatCurrency(receipt.total, receipt.currency)}</div>
             </div>
             <ul className="text-[14px] space-y-1.5">
               {(receipt.items || []).map((item) => (
@@ -112,14 +125,23 @@ export const VerifyPage: React.FC = () => {
         {status === 'ok' && ticket && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div>
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-sky-700">Verified ticket</div>
+              <div className="text-[12px] font-semibold uppercase tracking-wider text-sky-700">
+                Билет подтверждён
+              </div>
               <div className="text-xl font-semibold text-slate-900 mt-1">{ticket.pnr || ticket.id}</div>
               <div className="text-[14px] text-slate-500">{ticket.title}</div>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-[14px] space-y-1">
-              <div><span className="text-slate-500">Dates</span> · {formatShortDate(ticket.startDate)} — {formatShortDate(ticket.endDate)}</div>
-              <div><span className="text-slate-500">Status</span> · {ticket.status}</div>
-              <div><span className="text-slate-500">Fare</span> · {formatItineraryCurrency(ticket.totalPrice, ticket.currency)}</div>
+              <div>
+                <span className="text-slate-500">Даты</span> · {formatRussianDate(ticket.startDate, false)} — {formatRussianDate(ticket.endDate, false)}
+              </div>
+              <div>
+                <span className="text-slate-500">Статус</span> ·{' '}
+                {STATUS_LABELS[ticket.status]?.label || ticket.status}
+              </div>
+              <div>
+                <span className="text-slate-500">Тариф</span> · {formatItineraryCurrency(ticket.totalPrice, ticket.currency)}
+              </div>
             </div>
             <ul className="text-[14px] space-y-1.5">
               {(ticket.travelers || []).map((traveler) => (

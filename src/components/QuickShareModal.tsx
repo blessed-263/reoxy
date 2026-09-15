@@ -36,7 +36,7 @@ export const QuickShareModal: React.FC<QuickShareModalProps> = ({
   };
 
   const handleEmailShare = () => {
-    const subject = encodeURIComponent(`Квитанция РеOкси AO — ${receipt.id}`);
+    const subject = encodeURIComponent(`Квитанция AO РеOкси — ${receipt.id}`);
     const body = encodeURIComponent(textSummary);
     window.open(`mailto:${receipt.client.email || ''}?subject=${subject}&body=${body}`, '_blank');
   };

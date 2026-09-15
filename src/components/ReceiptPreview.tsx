@@ -44,14 +44,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   // Offline JSON verification payload
   const jsonVerificationPayload = useMemo(() => {
     return JSON.stringify({
-      issuer: 'РеOкси AO',
-      reg: '2024/7749-ZW',
+      issuer: 'AO РеOкси',
+      reg: '2024/7749',
       docket: receipt.id,
       date: receipt.date,
       client: receipt.client?.fullName || 'Client',
       total: `${receipt.total} ${receipt.currency}`,
       status: receipt.paymentStatus,
-      signatory: 'Tatenda Chiwara',
+      signatory: receipt.issuedBy?.trim() || 'Authorized registrar',
       hash: `RX-${receipt.id}-VERIFIED`
     }, null, 2);
   }, [receipt]);
@@ -196,7 +196,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                 {/* Header with authentic ReOxy vector logo */}
                 <A4Header
                   logoNode={<ReOxyLogo size="md" />}
-                  brandRegistration="REG № 2024/7749-ZW"
+                  brandRegistration="REG № 2024/7749"
                   documentCategory="ОФИЦИАЛЬНАЯ ВЕДОМОСТЬ РАСХОДОВ И КВИТАНЦИЯ"
                   documentTitle="Фискальная квитанция / Receipt"
                   documentSubtext={`Docket Ref: ${receipt.id} • ${formatDate(receipt.date)}`}
@@ -251,7 +251,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                     sectionTitle: 'Исполнитель / Bureau',
                     name: REOXY_COMPANY.name,
                     secondaryTitle: 'Бюро сертифицированных переводов',
-                    idNumber: 'REG № 2024/7749-ZW',
+                    idNumber: 'REG № 2024/7749',
                     phone: REOXY_COMPANY.contacts.primaryPhone,
                     email: REOXY_COMPANY.contacts.email
                   }}
@@ -311,11 +311,11 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                 {/* Signatures with Integrated Mobile Verification QR Code */}
                 <A4Signatures
                   theme="reoxy"
-                  primarySignerTitle="РеOкси / УПОЛНОМОЧЕННЫЙ РЕГИСТРАТОР"
-                  primarySignerName="Tatenda Chiwara"
+                  primarySignerTitle="AO РеOкси / УПОЛНОМОЧЕННЫЙ РЕГИСТРАТОР"
+                  primarySignerName={receipt.issuedBy?.trim() || 'Authorized registrar'}
                   secondarySignerTitle="ПОДТВЕРЖДЕНИЕ КЛИЕНТА"
                   secondarySignerName={receipt.client?.fullName || 'Клиент'}
-                  sealText="РеOкси"
+                  sealText="AO РеOкси"
                   showStamp={receipt.officialStamp !== false}
                   qrNode={
                     <div className="flex flex-col items-center justify-center p-1">

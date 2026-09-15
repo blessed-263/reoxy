@@ -1,11 +1,11 @@
 export const REOXY_COMPANY = {
-  name: "РеOкси AO",
-  shortName: "РеOкси AO",
+  name: "AO РеOкси",
+  shortName: "AO РеOкси",
   brandName: "ReOxy",
   tagline: "Your documents, handled with care",
   subtagline: "Certified translation, professional printing, and document preparation for academic submissions, visa applications, and employment.",
   registrationStatus: "Акционерное общество",
-  registrationNumber: "REG № 2024/7749-ZW",
+  registrationNumber: "REG № 2024/7749",
   inn: "9725148830",
   ogrn: "1247700167890",
   verificationPledge: "Certified & Verified — 100% Confidential Handling",
@@ -27,5 +27,5 @@ export const REOXY_COMPANY = {
   ],
 
   officialNotice: "Beware of fraudulent services. Check our official channels and protect your documents.",
-  copyright: "© 2026 РеOкси AO. Все права защищены."
+  copyright: "© 2026 AO РеOкси. Все права защищены."
 };

@@ -83,7 +83,7 @@ const createDefaultReceipt = (): Receipt => {
     balanceDue: 0,
     paymentStatus: 'paid',
     paymentMethod: 'sberbank',
-    issuedBy: 'ReOxy Document Desk - Authorized Officer',
+    issuedBy: 'Tatenda Chiwara',
     officialStamp: true,
     notes: 'Document received for official translation. All official stamps included in fee.',
     createdAt: new Date().toISOString(),

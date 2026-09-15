@@ -54,7 +54,7 @@ export const formatTurnaroundSpeed = (speed: string): string => {
 export const generateReceiptTextSummary = (receipt: Receipt): string => {
   const lines = [
     `📄 *OFFICIAL RECEIPT / INVOICE*`,
-    `*РеOкси AO*`,
+    `*AO РеOкси*`,
     `Certified Translation, Printing & Document Preparation`,
     `Website: reoxy.co.zw | Tel: +7 985 052-04-66`,
     `Address: Studencheskaya 33k6`,
@@ -108,7 +108,7 @@ export const generateReceiptTextSummary = (receipt: Receipt): string => {
   lines.push(`----------------------------------------`);
   lines.push(`Official Seal: ${receipt.officialStamp ? 'VERIFIED & CERTIFIED' : 'Standard'}`);
   lines.push(`Beware of fraudulent services. Check official channels at reoxy.co.zw.`);
-  lines.push(`© 2026 РеOкси AO`);
+  lines.push(`© 2026 AO РеOкси`);
 
   return lines.join('\n');
 };

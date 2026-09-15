@@ -661,13 +661,13 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label className="ui-label">Authorized signatory</label>
+            <label className="ui-label">Signatory name on receipt</label>
             <input
               type="text"
               value={receipt.issuedBy}
               onChange={(e) => onChange({ ...receipt, issuedBy: e.target.value })}
               className="ui-field"
-              placeholder="e.g. ReOxy Document Desk - Admin"
+              placeholder="Tatenda Chiwara"
             />
           </div>
           <div className="sm:col-span-2">

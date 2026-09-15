@@ -16,7 +16,7 @@ interface OfficialStampProps {
 const THEME: Record<StampTheme, { ink: string; top: string; bottom: string }> = {
   reoxy: {
     ink: '#0a4a86',
-    top: `РеOкси AO  ·  ОФИЦИАЛЬНАЯ ПЕЧАТЬ`,
+    top: `AO РеOкси  ·  ОФИЦИАЛЬНАЯ ПЕЧАТЬ`,
     bottom: `ИНН ${REOXY_COMPANY.inn}  ·  ОГРН ${REOXY_COMPANY.ogrn}`,
   },
   micor: {

@@ -24,6 +24,8 @@ import {
 } from '../../data/micorTravelsInfo';
 import { calculateDaysAndNights } from '../../utils/itineraryFormatters';
 import { FlightRouteArrow } from './FlightRouteArrow';
+import { PlaceSearchField } from '../common/PlaceSearchField';
+import { searchFlightPlaces } from '../../data/places';
 
 interface ItineraryFormProps {
   itinerary: Itinerary;
@@ -567,23 +569,36 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
                     </span>
                     <div className="grid grid-cols-3 gap-1.5">
                       <div className="col-span-2">
-                        <label className="ui-label">Город вылета</label>
-                        <input
-                          type="text"
+                        <label className="ui-label">Город / аэропорт вылета</label>
+                        <PlaceSearchField
                           value={flight.departureCity}
-                          onChange={(e) => handleUpdateFlight(index, { departureCity: e.target.value })}
-                          className="w-full ui-field"
-                          placeholder="Москва, Внуково"
+                          placeholder="Moscow, Sheremetyevo"
+                          search={searchFlightPlaces}
+                          onChange={(departureCity) => handleUpdateFlight(index, { departureCity })}
+                          onSelect={(hit) =>
+                            handleUpdateFlight(index, {
+                              departureCity: hit.city,
+                              departureAirport: hit.airport,
+                            })
+                          }
                         />
                       </div>
                       <div>
                         <label className="ui-label">Код IATA</label>
-                        <input
-                          type="text"
+                        <PlaceSearchField
                           value={flight.departureAirport || ''}
-                          onChange={(e) => handleUpdateFlight(index, { departureAirport: e.target.value.toUpperCase() })}
+                          placeholder="SVO"
                           className="w-full ui-field font-mono uppercase"
-                          placeholder="VKO"
+                          search={searchFlightPlaces}
+                          onChange={(departureAirport) =>
+                            handleUpdateFlight(index, { departureAirport: departureAirport.toUpperCase() })
+                          }
+                          onSelect={(hit) =>
+                            handleUpdateFlight(index, {
+                              departureAirport: hit.airport,
+                              departureCity: hit.city,
+                            })
+                          }
                         />
                       </div>
                     </div>
@@ -627,23 +642,36 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
                     </span>
                     <div className="grid grid-cols-3 gap-1.5">
                       <div className="col-span-2">
-                        <label className="ui-label">Город прилета</label>
-                        <input
-                          type="text"
+                        <label className="ui-label">Город / аэропорт прилета</label>
+                        <PlaceSearchField
                           value={flight.arrivalCity}
-                          onChange={(e) => handleUpdateFlight(index, { arrivalCity: e.target.value })}
-                          className="w-full ui-field"
-                          placeholder="Стамбул, Новый аэропорт"
+                          placeholder="Istanbul Airport"
+                          search={searchFlightPlaces}
+                          onChange={(arrivalCity) => handleUpdateFlight(index, { arrivalCity })}
+                          onSelect={(hit) =>
+                            handleUpdateFlight(index, {
+                              arrivalCity: hit.city,
+                              arrivalAirport: hit.airport,
+                            })
+                          }
                         />
                       </div>
                       <div>
                         <label className="ui-label">Код IATA</label>
-                        <input
-                          type="text"
+                        <PlaceSearchField
                           value={flight.arrivalAirport || ''}
-                          onChange={(e) => handleUpdateFlight(index, { arrivalAirport: e.target.value.toUpperCase() })}
-                          className="w-full ui-field font-mono uppercase"
                           placeholder="IST"
+                          className="w-full ui-field font-mono uppercase"
+                          search={searchFlightPlaces}
+                          onChange={(arrivalAirport) =>
+                            handleUpdateFlight(index, { arrivalAirport: arrivalAirport.toUpperCase() })
+                          }
+                          onSelect={(hit) =>
+                            handleUpdateFlight(index, {
+                              arrivalAirport: hit.airport,
+                              arrivalCity: hit.city,
+                            })
+                          }
                         />
                       </div>
                     </div>

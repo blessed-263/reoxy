@@ -52,7 +52,7 @@ const seededReceipt = {
   balanceDue: 0,
   paymentStatus: 'paid',
   paymentMethod: 'sberbank',
-  issuedBy: 'Seeded Registrar — РеOкси AO',
+  issuedBy: 'Seeded Registrar — AO РеOкси',
   officialStamp: true,
   notes: 'SEEDED DATA. Safe to delete. QR should open /verify/receipt/SEED-ROX-0001',
   createdAt: new Date().toISOString(),
