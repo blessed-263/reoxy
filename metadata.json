@@ -2,5 +2,5 @@
   "name": "ReOxy Receipt Generator",
   "description": "Professional document receipt generator for ReOxy Enterprises and modern travel itinerary generator for Micor Travels.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

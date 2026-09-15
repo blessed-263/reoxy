@@ -2,9 +2,6 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
-import { createApiExpress } from './server/app.ts';
-
-const apiApp = createApiExpress();
 
 export default defineConfig(() => {
   return {
@@ -13,7 +10,9 @@ export default defineConfig(() => {
       tailwindcss(),
       {
         name: 'reoxy-api',
-        configureServer(server) {
+        async configureServer(server) {
+          const { createApiExpress } = await import('./server/app.ts');
+          const apiApp = createApiExpress();
           server.middlewares.use((req, res, next) => {
             if (!req.url?.startsWith('/api')) {
               next();
