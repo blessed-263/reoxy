@@ -65,9 +65,6 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
           <h1 className="mt-2 text-[26px] font-semibold tracking-tight text-white">
             Desk authorization
           </h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-slate-300">
-            This console is locked. Sign in with the single operator account. Sessions are issued by the server, not the browser.
-          </p>
 
           <div className="mt-6 space-y-4">
             <div>
@@ -105,9 +102,6 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
           >
             {busy ? 'Checking…' : 'Enter desk'}
           </button>
-          <p className="mt-4 text-center text-[11px] text-slate-500">
-            QR verification pages stay public. The generator does not.
-          </p>
         </form>
       </main>
     </div>
