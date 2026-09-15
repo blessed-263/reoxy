@@ -56,13 +56,13 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
             title={
               storageMode === 'cloud'
-                ? 'Saving to Railway Postgres'
+                ? 'Saving live'
                 : storageMode === 'local'
-                  ? 'API / database unavailable — using this browser only'
-                  : 'Connecting to database…'
+                  ? 'Live API unavailable — using this browser only'
+                  : 'Connecting to live…'
             }
           >
-            {storageMode === 'cloud' ? 'Postgres' : storageMode === 'local' ? 'Local only' : 'Connecting'}
+            {storageMode === 'cloud' ? 'Live' : storageMode === 'local' ? 'Local only' : 'Connecting'}
           </span>
 
           <div className="hidden sm:flex items-center rounded-full bg-slate-100 p-0.5">

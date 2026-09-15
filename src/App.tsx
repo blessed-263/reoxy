@@ -161,7 +161,7 @@ export default function App() {
           setStorageMode('cloud');
           return;
         } catch (err) {
-          console.error('Failed to load from Postgres', err);
+          console.error('Failed to load from live', err);
         }
       }
 
@@ -270,7 +270,7 @@ export default function App() {
         await saveItineraryRemote(updated);
       } catch (err) {
         console.error(err);
-        window.alert(err instanceof Error ? err.message : 'Could not save ticket to the database.');
+        window.alert(err instanceof Error ? err.message : 'Could not save ticket live.');
       }
     }
   };
@@ -334,7 +334,7 @@ export default function App() {
         await saveReceiptRemote(updated);
       } catch (err) {
         console.error(err);
-        window.alert(err instanceof Error ? err.message : 'Could not save receipt to the database.');
+        window.alert(err instanceof Error ? err.message : 'Could not save receipt live.');
       }
     }
   };
