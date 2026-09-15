@@ -1,10 +1,24 @@
+function normalizePublicUrl(raw) {
+  const value = String(raw || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\/$/, '');
+
+  if (!value || value === 'VITE_APP_URL' || value === 'VITE_API_URL') {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(value)) return value;
+  return `https://${value}`;
+}
+
 export default async function handler(_req, res) {
-  const apiBase = (process.env.VITE_API_URL || '').replace(/\/$/, '');
-  const appUrl = (process.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const apiBase = normalizePublicUrl(process.env.VITE_API_URL);
+  const appUrl = normalizePublicUrl(process.env.VITE_APP_URL);
   const report = {
     vercel: 'ok',
-    frontend: appUrl || '(VITE_APP_URL missing)',
-    backend: apiBase || '(VITE_API_URL missing)',
+    frontend: appUrl || '(set VITE_APP_URL to https://reoxy.vercel.app)',
+    backend: apiBase || '(set VITE_API_URL to https://reoxy-production.up.railway.app)',
     database: 'unknown',
     ok: false,
     error: null,
@@ -22,7 +36,7 @@ export default async function handler(_req, res) {
       report.error = err instanceof Error ? err.message : String(err);
     }
   } else {
-    report.error = 'VITE_API_URL is not set on Vercel';
+    report.error = 'VITE_API_URL is missing or missing https://';
   }
 
   console.log('========== ReOxy connection ==========');

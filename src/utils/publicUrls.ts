@@ -1,5 +1,7 @@
+import { normalizePublicUrl } from './normalizeUrl';
+
 export function publicSiteOrigin() {
-  const fromEnv = (import.meta.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const fromEnv = normalizePublicUrl(import.meta.env.VITE_APP_URL);
   if (fromEnv) return fromEnv;
   if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin.replace(/\/$/, '');

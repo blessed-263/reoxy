@@ -1,7 +1,8 @@
 import { Receipt } from '../types';
 import { Itinerary } from '../types/itinerary';
+import { normalizePublicUrl } from '../utils/normalizeUrl';
 
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = normalizePublicUrl(import.meta.env.VITE_API_URL);
 
 function headers() {
   const extra: Record<string, string> = {
