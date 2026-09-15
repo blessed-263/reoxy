@@ -58,13 +58,16 @@ import {createRoot} from 'react-dom/client';
 import { AuthGate } from './components/AuthGate';
 import App from './App.tsx';
 import {VerifyPage} from './verify/VerifyPage.tsx';
+import { LandingPage } from './pages/LandingPage.tsx';
 import './index.css';
 
-const isVerifyRoute = window.location.pathname.startsWith('/verify/');
+const path = window.location.pathname;
+const isVerifyRoute = path.startsWith('/verify/');
+const isDeskRoute = path === '/desk' || path.startsWith('/desk/');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isVerifyRoute ? <VerifyPage /> : <AuthGate><App /></AuthGate>}
+    {isVerifyRoute ? <VerifyPage /> : isDeskRoute ? <AuthGate><App /></AuthGate> : <LandingPage />}
   </StrictMode>,
 );
 

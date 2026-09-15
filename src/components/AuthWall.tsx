@@ -86,6 +86,9 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
           >
             {busy ? 'Checking…' : 'Enter desk'}
           </button>
+          <a href="/" className="mt-4 block text-center text-[13px] font-medium text-slate-500 hover:text-slate-800">
+            На сайт
+          </a>
         </form>
       </main>
     </div>
