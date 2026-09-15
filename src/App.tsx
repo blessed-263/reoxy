@@ -12,8 +12,7 @@ import { ItineraryShareModal } from './components/itinerary/ItineraryShareModal'
 
 import { Receipt } from './types';
 import { Itinerary } from './types/itinerary';
-import { INITIAL_RECEIPTS } from './data/initialReceipts';
-import { SAMPLE_ITINERARIES, createEmptyItinerary, MICOR_TRAVELS_INFO } from './data/micorTravelsInfo';
+import { createEmptyItinerary, MICOR_TRAVELS_INFO } from './data/micorTravelsInfo';
 import { generateReceiptId } from './utils/formatters';
 import { REOXY_COMPANY } from './data/companyInfo';
 import { Edit3, Eye } from 'lucide-react';
@@ -124,7 +123,7 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse saved receipts', e);
     }
-    return INITIAL_RECEIPTS;
+    return [];
   };
 
   const readLocalItineraries = (): Itinerary[] => {
@@ -137,7 +136,7 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse saved itineraries', e);
     }
-    return SAMPLE_ITINERARIES;
+    return [];
   };
 
   useEffect(() => {

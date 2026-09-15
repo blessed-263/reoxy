@@ -12,6 +12,7 @@
     "start": "tsx server/index.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
+    "seed": "node scripts/seed-production.mjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

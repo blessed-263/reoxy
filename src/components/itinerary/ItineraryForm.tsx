@@ -20,8 +20,7 @@ import {
   Clock
 } from 'lucide-react';
 import { 
-  CABIN_CLASS_LABELS, 
-  SAMPLE_ITINERARIES
+  CABIN_CLASS_LABELS
 } from '../../data/micorTravelsInfo';
 import { calculateDaysAndNights } from '../../utils/itineraryFormatters';
 import { FlightRouteArrow } from './FlightRouteArrow';
@@ -135,13 +134,6 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
     });
   };
 
-  const handleLoadPreset = (sampleId: string) => {
-    const found = SAMPLE_ITINERARIES.find(s => s.id === sampleId);
-    if (found) {
-      onChange(JSON.parse(JSON.stringify(found)));
-    }
-  };
-
   return (
     <div className="p-5 space-y-5 text-slate-900">
       {/* Top Header & Presets Bar */}
@@ -149,20 +141,6 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
         <div className="flex items-center gap-2">
           <Plane className="w-4 h-4 text-sky-600" />
           <span className="font-semibold text-slate-900">Flight ticket</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-slate-500">Samples</span>
-          {SAMPLE_ITINERARIES.map((sample) => (
-            <button
-              key={sample.id}
-              type="button"
-              onClick={() => handleLoadPreset(sample.id)}
-              className="ui-chip font-mono-num"
-            >
-              {sample.pnr || sample.id}
-            </button>
-          ))}
         </div>
       </div>
 
