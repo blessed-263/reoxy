@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1e293b;
+    background-color: #eef1f5;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .ui-field {
+    width: 100%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    border-radius: 12px;
+    padding: 0.55rem 0.85rem;
+    font-size: 14px;
+    line-height: 1.45;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .ui-field:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+  }
+
+  .ui-field:focus {
+    border-color: #0ea5e9;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
+  }
+
+  .ui-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.32rem;
+  }
+
+  .ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .ui-chip:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .ui-chip-on {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+  }
+
+  .ui-chip-on:hover {
+    background: #1e293b;
+    border-color: #1e293b;
+    color: #ffffff;
+  }
+
+  .preview-stage {
+    background:
+      radial-gradient(ellipse at top, #f8fafc 0%, #e8edf3 55%, #e2e8f0 100%);
+  }
+}
+
+.font-editorial {
+  font-family: 'Newsreader', Georgia, Cambria, serif;
+}
+
+.font-mono-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+.font-seal {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+.official-stamp {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Authentic Document Paper Presentation */
+.document-desk {
+  background-color: #f2f1ed;
+  background-image: 
+    radial-gradient(#e4e2da 0.75px, transparent 0.75px), 
+    radial-gradient(#e4e2da 0.75px, #f2f1ed 0.75px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}
+
+.document-sheet {
+  background: #ffffff;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 12px 24px -4px rgba(0, 0, 0, 0.06);
+}
+
+.a4-page.a4-comfortable {
+  border-radius: 26px;
+  font-size: 12.5px;
+}
+
+.a4-page.a4-comfortable.document-sheet {
+  box-shadow:
+    0 10px 28px -10px rgba(2, 132, 199, 0.22),
+    0 22px 44px -16px rgba(15, 23, 42, 0.14);
+}
+
+/* Pagination & Page Break Utility Classes */
+.page-break {
+  break-before: page;
+  page-break-before: always;
+}
+
+.avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+thead {
+  display: table-header-group;
+}
+
+tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Strict A4 Print Formatting System */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    width: 210mm !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #141519 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Hide app chrome; only the A4 sheets should print / Save-as-PDF. */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .a4-page,
+  .a4-page * {
+    visibility: visible !important;
+  }
+
+  .document-desk {
+    background: none !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .document-desk > div,
+  .document-desk > div > div {
+    height: auto !important;
+    width: auto !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  .a4-page {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    display: flex !important;
+    transform: none !important;
+  }
+
+  .a4-page.a4-comfortable {
+    padding: 18mm 18mm 16mm !important;
+    border-radius: 0 !important;
+  }
+
+  .a4-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+}
