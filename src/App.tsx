@@ -144,6 +144,7 @@ export default function App() {
     let cancelled = false;
 
     const hydrate = async () => {
+      void fetch('/api/status').catch(() => {});
       const online = await checkApiHealth();
       if (cancelled) return;
 
