@@ -88,6 +88,9 @@ export async function ensureSchema() {
       `ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'bank_card'`
     );
   }
+  await pool.query(`ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS visa_policy TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS fare_policy TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS boarding_policy TEXT NOT NULL DEFAULT ''`);
 }
 
 export function requirePool() {

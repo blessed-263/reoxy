@@ -108,6 +108,9 @@ export interface Itinerary {
   fareBreakdown?: FareBreakdown;
   baggagePolicy?: string;
   checkInPolicy?: string;
+  visaPolicy?: string;
+  farePolicy?: string;
+  boardingPolicy?: string;
   agentName: string;
   agentPhone: string;
   agentEmail: string;

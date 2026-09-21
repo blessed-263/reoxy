@@ -109,6 +109,9 @@ function mapItinerary(
     },
     baggagePolicy: str(row.baggage_policy) || undefined,
     checkInPolicy: str(row.check_in_policy) || undefined,
+    visaPolicy: str(row.visa_policy) || undefined,
+    farePolicy: str(row.fare_policy) || undefined,
+    boardingPolicy: str(row.boarding_policy) || undefined,
     agentName: str(row.agent_name),
     agentPhone: str(row.agent_phone),
     agentEmail: str(row.agent_email),
@@ -229,9 +232,9 @@ export async function upsertItinerary(id: string, body: Body) {
       `INSERT INTO itineraries (
          id, pnr, title, destination, start_date, end_date, total_days, total_nights, status,
          total_price, currency, payment_status, payment_method, amount_paid, base_fare, taxes_and_fees,
-         fuel_surcharge, service_fee, baggage_policy, check_in_policy, agent_name, agent_phone,
-         agent_email, emergency_phone, created_at, updated_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
+         fuel_surcharge, service_fee, baggage_policy, check_in_policy, visa_policy, fare_policy,
+         boarding_policy, agent_name, agent_phone, agent_email, emergency_phone, created_at, updated_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
        ON CONFLICT (id) DO UPDATE SET
          pnr = EXCLUDED.pnr,
          title = EXCLUDED.title,
@@ -252,6 +255,9 @@ export async function upsertItinerary(id: string, body: Body) {
          service_fee = EXCLUDED.service_fee,
          baggage_policy = EXCLUDED.baggage_policy,
          check_in_policy = EXCLUDED.check_in_policy,
+         visa_policy = EXCLUDED.visa_policy,
+         fare_policy = EXCLUDED.fare_policy,
+         boarding_policy = EXCLUDED.boarding_policy,
          agent_name = EXCLUDED.agent_name,
          agent_phone = EXCLUDED.agent_phone,
          agent_email = EXCLUDED.agent_email,
@@ -278,6 +284,9 @@ export async function upsertItinerary(id: string, body: Body) {
         num(fare.serviceFee),
         str(body.baggagePolicy),
         str(body.checkInPolicy),
+        str(body.visaPolicy),
+        str(body.farePolicy),
+        str(body.boardingPolicy),
         str(body.agentName),
         str(body.agentPhone),
         str(body.agentEmail),

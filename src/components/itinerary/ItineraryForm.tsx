@@ -20,7 +20,8 @@ import {
   Clock
 } from 'lucide-react';
 import { 
-  CABIN_CLASS_LABELS
+  CABIN_CLASS_LABELS,
+  MICOR_DEFAULT_BOARDING
 } from '../../data/micorTravelsInfo';
 import { calculateDaysAndNights } from '../../utils/itineraryFormatters';
 import { PAYMENT_METHOD_OPTIONS } from '../../utils/paymentInstructions';
@@ -874,28 +875,64 @@ export const ItineraryForm: React.FC<ItineraryFormProps> = ({
       {activeSection === 'rules' && (
         <div className="space-y-3">
           <div>
-            <label className="ui-label">
-              Правила перевозки багажа и ручной клади
-            </label>
+            <label className="ui-label">Регламент регистрации в аэропорту</label>
             <textarea
-              rows={3}
-              value={itinerary.baggagePolicy || ''}
-              onChange={(e) => updateField('baggagePolicy', e.target.value)}
+              rows={4}
+              value={itinerary.checkInPolicy || ''}
+              onChange={(e) => updateField('checkInPolicy', e.target.value)}
               className="w-full ui-field leading-relaxed"
-              placeholder="Норма бесплатного провоза багажа: 1 место до 23 кг..."
             />
           </div>
 
           <div>
-            <label className="ui-label">
-              Регламент регистрации в аэропорту
-            </label>
+            <label className="ui-label">Посадка / гейт</label>
+            <textarea
+              rows={2}
+              value={itinerary.boardingPolicy || ''}
+              onChange={(e) => updateField('boardingPolicy', e.target.value)}
+              className="w-full ui-field leading-relaxed"
+              placeholder={MICOR_DEFAULT_BOARDING}
+            />
+          </div>
+
+          <div>
+            <label className="ui-label">Правила перевозки багажа и ручной клади</label>
+            <textarea
+              rows={4}
+              value={itinerary.baggagePolicy || ''}
+              onChange={(e) => updateField('baggagePolicy', e.target.value)}
+              className="w-full ui-field leading-relaxed"
+            />
+          </div>
+
+          <div>
+            <label className="ui-label">Паспорт и виза</label>
+            <textarea
+              rows={4}
+              value={itinerary.visaPolicy || ''}
+              onChange={(e) => updateField('visaPolicy', e.target.value)}
+              className="w-full ui-field leading-relaxed"
+            />
+          </div>
+
+          <div>
+            <label className="ui-label">Тариф, обмен и возврат</label>
+            <textarea
+              rows={4}
+              value={itinerary.farePolicy || ''}
+              onChange={(e) => updateField('farePolicy', e.target.value)}
+              className="w-full ui-field leading-relaxed"
+            />
+          </div>
+
+          <div>
+            <label className="ui-label">Дополнительные примечания</label>
             <textarea
               rows={3}
-              value={itinerary.checkInPolicy || ''}
-              onChange={(e) => updateField('checkInPolicy', e.target.value)}
+              value={(itinerary.importantNotes || []).join('\n')}
+              onChange={(e) => updateField('importantNotes', e.target.value.split('\n'))}
               className="w-full ui-field leading-relaxed"
-              placeholder="Онлайн-регистрация открывается за 24 часа..."
+              placeholder="Каждая строка — отдельное примечание"
             />
           </div>
         </div>

@@ -2,7 +2,11 @@ import React, { useMemo } from 'react';
 import { Itinerary } from '../../types/itinerary';
 import { 
   CABIN_CLASS_LABELS, 
-  PAYMENT_STATUS_LABELS
+  PAYMENT_STATUS_LABELS,
+  MICOR_DEFAULT_CHECK_IN,
+  MICOR_DEFAULT_BAGGAGE,
+  MICOR_DEFAULT_VISA,
+  MICOR_DEFAULT_FARE
 } from '../../data/micorTravelsInfo';
 import { 
   formatShortDate, 
@@ -48,6 +52,11 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
     () => ticketVerifyUrl(itinerary.id),
     [itinerary.id]
   );
+  const checkInText = itinerary.checkInPolicy?.trim() || MICOR_DEFAULT_CHECK_IN;
+  const baggageText = itinerary.baggagePolicy?.trim() || MICOR_DEFAULT_BAGGAGE;
+  const visaText = itinerary.visaPolicy?.trim() || MICOR_DEFAULT_VISA;
+  const fareText = itinerary.farePolicy?.trim() || MICOR_DEFAULT_FARE;
+  const boardingText = itinerary.boardingPolicy?.trim() || '';
   const payment = useMemo(
     () => ticketPaymentInstructions(itinerary.paymentMethod, pnrCode, itinerary.paymentStatus),
     [itinerary.paymentMethod, itinerary.paymentStatus, pnrCode]
@@ -369,24 +378,24 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[#0284c7] shrink-0" />
                   <div>
-                    <div className="font-bold text-[#0f172a] text-[11px]">Регистрация 24ч</div>
-                    <div className="text-[9px] text-[#64748b] font-mono">Онлайн-чек-ин открыт</div>
+                    <div className="font-bold text-[#0f172a] text-[11px]">Регистрация</div>
+                    <div className="text-[9px] text-[#64748b] font-mono">Онлайн-чек-ин</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Luggage className="w-4 h-4 text-[#16a34a] shrink-0" />
                   <div>
-                    <div className="font-bold text-[#0f172a] text-[11px]">Багаж: 23 кг</div>
-                    <div className="text-[9px] text-[#64748b] font-mono">+ 8 кг ручная кладь</div>
+                    <div className="font-bold text-[#0f172a] text-[11px]">Багаж</div>
+                    <div className="text-[9px] text-[#64748b] font-mono">Норма провоза</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Plane className="w-4 h-4 text-[#0f172a] shrink-0" />
                   <div>
-                    <div className="font-bold text-[#0f172a] text-[11px]">Гейт за 20 мин</div>
-                    <div className="text-[9px] text-[#64748b] font-mono">Посадка завершается</div>
+                    <div className="font-bold text-[#0f172a] text-[11px]">Посадка</div>
+                    <div className="text-[9px] text-[#64748b] font-mono">По правилам билета</div>
                   </div>
                 </div>
 
@@ -407,8 +416,9 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                     <Clock className="w-3.5 h-3.5 text-[#0284c7]" />
                     <span>01. Регламент регистрации в аэропорту и посадки на борт</span>
                   </h4>
-                  <p className="text-[11px] text-[#475569]">
-                    Онлайн-регистрация доступна на официальном сайте или в мобильном приложении авиакомпании за 24–48 часов до вылета. Регистрация в аэропорту на стойках открывается за 3 часа и строго закрывается за 60 минут (на международных рейсах) или за 40 минут (на внутренних рейсах) до времени отправления по расписанию. Выход на посадку (Boarding Gate) закрывается ровно за 20 минут до вылета. Опоздавшие пассажиры к перелету не допускаются.
+                  <p className="text-[11px] text-[#475569] whitespace-pre-wrap">
+                    {checkInText}
+                    {boardingText ? `\n${boardingText}` : ''}
                   </p>
                 </div>
 
@@ -418,8 +428,8 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                     <Luggage className="w-3.5 h-3.5 text-[#16a34a]" />
                     <span>02. Нормы провоза багажа и правила авиационной безопасности</span>
                   </h4>
-                  <p className="text-[11px] text-[#475569]">
-                    Зарегистрированный багаж: 1–2 места до 23 кг (эконом-класс) или до 32 кг (бизнес-класс), сумма трех измерений каждого места не должна превышать 158 см. Ручная кладь: 1 место до 8 кг (55×40×23 см). Внешние аккумуляторы (Power Bank), электронные сигареты и запасные литиевые батареи разрешено провозить <strong>ИСКЛЮЧИТЕЛЬНО в ручной клади</strong>; их сдача в багаж категорически запрещена правилами ICAO/IATA.
+                  <p className="text-[11px] text-[#475569] whitespace-pre-wrap">
+                    {baggageText}
                   </p>
                 </div>
 
@@ -429,8 +439,8 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                     <AlertTriangle className="w-3.5 h-3.5 text-[#eab308]" />
                     <span>03. Паспортно-визовый контроль и транзитные требования</span>
                   </h4>
-                  <p className="text-[11px] text-[#475569]">
-                    Пассажир несет единоличную ответственность за соблюдение таможенных, пограничных, санитарных и визовых требований всех стран по маршруту следования (включая страны транзита и пересадки). Срок действия заграничного паспорта должен составлять не менее 6 месяцев на дату обратного вылета. Несовершеннолетние пассажиры, следующие без обоих родителей, обязаны иметь нотариально удостоверенное согласие на выезд.
+                  <p className="text-[11px] text-[#475569] whitespace-pre-wrap">
+                    {visaText}
                   </p>
                 </div>
 
@@ -440,10 +450,23 @@ export const ItineraryPreview: React.FC<ItineraryPreviewProps> = ({
                     <Info className="w-3.5 h-3.5 text-[#64748b]" />
                     <span>04. Применение тарифа, обмен, возврат и правило последовательности купонов</span>
                   </h4>
-                  <p className="text-[11px] text-[#475569]">
-                    Полетные купоны должны использоваться в строгой хронологической последовательности, начиная с первого пункта отправления. В случае неявки пассажира на первый сегмент (No-Show), все последующие рейсы в бронировании аннулируются автоматически без компенсации. Добровольный обмен или возврат билета осуществляется в соответствии с правилами примененного тарифа авиакомпании до окончания регистрации на рейс.
+                  <p className="text-[11px] text-[#475569] whitespace-pre-wrap">
+                    {fareText}
                   </p>
                 </div>
+
+                {(itinerary.importantNotes || []).filter((note) => note.trim()).length > 0 && (
+                  <div className="border-b border-[#e2e8f0] pb-2">
+                    <h4 className="font-mono text-[10px] uppercase font-bold tracking-wider text-[#0f172a] mb-1">
+                      05. Примечания
+                    </h4>
+                    <ul className="text-[11px] text-[#475569] list-disc pl-4 space-y-0.5">
+                      {itinerary.importantNotes!.filter((note) => note.trim()).map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* GDS Verification Box */}
                 <div className="bg-[#f8fafc] border border-[#e2e8f0] p-3 flex items-center justify-between gap-4">
