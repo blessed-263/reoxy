@@ -121,30 +121,31 @@ function mapItinerary(
   };
 }
 
-async function assemble(client: PoolClient, rows: Record<string, unknown>[]) {
+async function assemble(rows: Record<string, unknown>[]) {
   if (rows.length === 0) return [];
+  const db = requirePool();
   const ids = rows.map((row) => str(row.id));
 
   const [travelers, flights, accommodations, days, meals, activities, notes] = await Promise.all([
-    client.query(`SELECT * FROM travelers WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
-    client.query(`SELECT * FROM flights WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
-    client.query(`SELECT * FROM accommodations WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
-    client.query(`SELECT * FROM itinerary_days WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC, day_number ASC`, [ids]),
-    client.query(
+    db.query(`SELECT * FROM travelers WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
+    db.query(`SELECT * FROM flights WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
+    db.query(`SELECT * FROM accommodations WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC`, [ids]),
+    db.query(`SELECT * FROM itinerary_days WHERE itinerary_id = ANY($1::text[]) ORDER BY sort_order ASC, day_number ASC`, [ids]),
+    db.query(
       `SELECT m.* FROM itinerary_day_meals m
        JOIN itinerary_days d ON d.id = m.day_id
        WHERE d.itinerary_id = ANY($1::text[])
        ORDER BY m.sort_order ASC`,
       [ids]
     ),
-    client.query(
+    db.query(
       `SELECT a.* FROM itinerary_day_activities a
        JOIN itinerary_days d ON d.id = a.day_id
        WHERE d.itinerary_id = ANY($1::text[])
        ORDER BY a.sort_order ASC`,
       [ids]
     ),
-    client.query(
+    db.query(
       `SELECT * FROM itinerary_notes WHERE itinerary_id = ANY($1::text[]) ORDER BY kind ASC, sort_order ASC`,
       [ids]
     ),
@@ -192,12 +193,7 @@ function group(rows: Record<string, unknown>[], key: string) {
 export async function listItineraries() {
   const db = requirePool();
   const { rows } = await db.query(`SELECT * FROM itineraries ORDER BY updated_at DESC`);
-  const client = await db.connect();
-  try {
-    return await assemble(client, rows);
-  } finally {
-    client.release();
-  }
+  return assemble(rows);
 }
 
 export async function getItinerary(id: string) {
@@ -207,13 +203,8 @@ export async function getItinerary(id: string) {
     [id]
   );
   if (!rows[0]) return null;
-  const client = await db.connect();
-  try {
-    const [doc] = await assemble(client, rows);
-    return doc || null;
-  } finally {
-    client.release();
-  }
+  const [doc] = await assemble(rows);
+  return doc || null;
 }
 
 export async function upsertItinerary(id: string, body: Body) {

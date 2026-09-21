@@ -1,4 +1,3 @@
-import type { PoolClient } from 'pg';
 import { requirePool } from './db.ts';
 import { bool, dateStr, idOr, iso, num, str } from './coerce.ts';
 
@@ -76,20 +75,21 @@ function mapReceipt(
   };
 }
 
-async function assemble(client: PoolClient, rows: Record<string, unknown>[]) {
+async function assemble(rows: Record<string, unknown>[]) {
   if (rows.length === 0) return [];
+  const db = requirePool();
   const ids = rows.map((row) => str(row.id));
   const clientIds = rows.map((row) => str(row.client_id));
 
   const [clients, promotions, metas, types, items] = await Promise.all([
-    client.query(`SELECT * FROM clients WHERE id = ANY($1::text[])`, [clientIds]),
-    client.query(`SELECT * FROM receipt_promotions WHERE receipt_id = ANY($1::text[])`, [ids]),
-    client.query(`SELECT * FROM receipt_document_meta WHERE receipt_id = ANY($1::text[])`, [ids]),
-    client.query(
+    db.query(`SELECT * FROM clients WHERE id = ANY($1::text[])`, [clientIds]),
+    db.query(`SELECT * FROM receipt_promotions WHERE receipt_id = ANY($1::text[])`, [ids]),
+    db.query(`SELECT * FROM receipt_document_meta WHERE receipt_id = ANY($1::text[])`, [ids]),
+    db.query(
       `SELECT * FROM receipt_document_types WHERE receipt_id = ANY($1::text[]) ORDER BY sort_order ASC`,
       [ids]
     ),
-    client.query(
+    db.query(
       `SELECT * FROM receipt_items WHERE receipt_id = ANY($1::text[]) ORDER BY sort_order ASC`,
       [ids]
     ),
@@ -127,25 +127,15 @@ async function assemble(client: PoolClient, rows: Record<string, unknown>[]) {
 export async function listReceipts() {
   const db = requirePool();
   const { rows } = await db.query(`SELECT * FROM receipts ORDER BY updated_at DESC`);
-  const client = await db.connect();
-  try {
-    return await assemble(client, rows);
-  } finally {
-    client.release();
-  }
+  return assemble(rows);
 }
 
 export async function getReceipt(id: string) {
   const db = requirePool();
   const { rows } = await db.query(`SELECT * FROM receipts WHERE id = $1 LIMIT 1`, [id]);
   if (!rows[0]) return null;
-  const client = await db.connect();
-  try {
-    const [doc] = await assemble(client, rows);
-    return doc || null;
-  } finally {
-    client.release();
-  }
+  const [doc] = await assemble(rows);
+  return doc || null;
 }
 
 export async function upsertReceipt(id: string, body: ReceiptBody) {

@@ -3,6 +3,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import { ensureSchema, pool } from './db.ts';
 import { corsMiddleware } from './cors.ts';
 import { deleteReceipt, getReceipt, listReceipts, upsertReceipt } from './receiptsRepo.ts';
+import { deleteItinerary, getItinerary, listItineraries, upsertItinerary } from './itinerariesRepo.ts';
 import { handleLogin, handleLogout, handleMe, requireAuth } from './auth.ts';
 
 const apiRouter = Router();
