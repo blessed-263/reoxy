@@ -4,7 +4,15 @@ import { SCHEMA_SQL } from './schema.ts';
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL?.trim();
+function databaseUrl() {
+  let url = process.env.DATABASE_URL?.trim() || '';
+  if (/:6543\b/.test(url) && !/[?&]pgbouncer=true/.test(url)) {
+    url += `${url.includes('?') ? '&' : '?'}pgbouncer=true`;
+  }
+  return url || undefined;
+}
+
+const connectionString = databaseUrl();
 
 function sslConfig() {
   if (!connectionString) return false;
@@ -19,6 +27,7 @@ export const pool = connectionString
       connectionString,
       ssl: sslConfig(),
       max: 1,
+      connectionTimeoutMillis: 8000,
     })
   : null;
 

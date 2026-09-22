@@ -1,12 +1,20 @@
 {
   "buildCommand": "node scripts/check-connection.mjs && npm run build",
   "functions": {
-    "api/[...path].ts": {
-      "includeFiles": "server/**",
+    "api/index.js": {
       "maxDuration": 30
+    },
+    "api/health.js": {
+      "maxDuration": 15
     }
   },
   "rewrites": [
+    { "source": "/api/auth/:path*", "destination": "/api" },
+    { "source": "/api/receipts", "destination": "/api" },
+    { "source": "/api/receipts/:path*", "destination": "/api" },
+    { "source": "/api/itineraries", "destination": "/api" },
+    { "source": "/api/itineraries/:path*", "destination": "/api" },
+    { "source": "/api/public/:path*", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
