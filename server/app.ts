@@ -136,6 +136,7 @@ export function createApiExpress() {
   app.options('*', corsMiddleware);
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', apiRouter);
+  app.use(apiRouter);
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     sendError(res, err);
   });
