@@ -1008,15 +1008,16 @@ async function handleLogin(req, res) {
   const email = String(req.body?.email || req.body?.username || "").trim().toLowerCase();
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!email || !password) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    return res.status(400).json({ error: "Email and password are required" });
   }
   const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.session || !data.user?.email) {
+    console.error("[auth] sign-in failed", error?.message || "no session");
     return res.status(401).json({ error: "Invalid credentials" });
   }
   if (!isDeskOperator(data.user.email)) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    return res.status(403).json({ error: "This account is not on DESK_OPERATORS" });
   }
   setAuthCookies(req, res, data.session.access_token, data.session.refresh_token);
   return res.json({ ok: true, user: data.user.email });
@@ -1158,6 +1159,27 @@ function createApiExpress() {
   app2.set("trust proxy", 1);
   app2.use(corsMiddleware);
   app2.options("*", corsMiddleware);
+  app2.use((req, _res, next) => {
+    const body = req.body;
+    if (Buffer.isBuffer(body)) {
+      try {
+        req.body = JSON.parse(body.toString("utf8"));
+      } catch {
+        req.body = {};
+      }
+      req._body = true;
+    } else if (typeof body === "string" && body.trim()) {
+      try {
+        req.body = JSON.parse(body);
+      } catch {
+        req.body = {};
+      }
+      req._body = true;
+    } else if (body && typeof body === "object") {
+      req._body = true;
+    }
+    next();
+  });
   app2.use(import_express.default.json({ limit: "2mb" }));
   app2.use("/api", apiRouter);
   app2.use(apiRouter);

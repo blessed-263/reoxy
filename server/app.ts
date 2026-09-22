@@ -134,6 +134,27 @@ export function createApiExpress() {
   app.set('trust proxy', 1);
   app.use(corsMiddleware);
   app.options('*', corsMiddleware);
+  app.use((req, _res, next) => {
+    const body = (req as Request & { body?: unknown }).body;
+    if (Buffer.isBuffer(body)) {
+      try {
+        req.body = JSON.parse(body.toString('utf8'));
+      } catch {
+        req.body = {};
+      }
+      (req as Request & { _body?: boolean })._body = true;
+    } else if (typeof body === 'string' && body.trim()) {
+      try {
+        req.body = JSON.parse(body);
+      } catch {
+        req.body = {};
+      }
+      (req as Request & { _body?: boolean })._body = true;
+    } else if (body && typeof body === 'object') {
+      (req as Request & { _body?: boolean })._body = true;
+    }
+    next();
+  });
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', apiRouter);
   app.use(apiRouter);

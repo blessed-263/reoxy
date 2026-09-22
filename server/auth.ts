@@ -124,16 +124,17 @@ export async function handleLogin(req: Request, res: Response) {
   const email = String(req.body?.email || req.body?.username || '').trim().toLowerCase();
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   if (!email || !password) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(400).json({ error: 'Email and password are required' });
   }
 
   const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.session || !data.user?.email) {
+    console.error('[auth] sign-in failed', error?.message || 'no session');
     return res.status(401).json({ error: 'Invalid credentials' });
   }
   if (!isDeskOperator(data.user.email)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(403).json({ error: 'This account is not on DESK_OPERATORS' });
   }
 
   setAuthCookies(req, res, data.session.access_token, data.session.refresh_token);
