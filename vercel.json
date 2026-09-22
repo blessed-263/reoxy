@@ -1,8 +1,6 @@
 {
   "buildCommand": "node scripts/check-connection.mjs && npm run build",
   "rewrites": [
-    { "source": "/api/status", "destination": "/api/status" },
-    { "source": "/api/:path*", "destination": "https://reoxy-production.up.railway.app/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

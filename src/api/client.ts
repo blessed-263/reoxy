@@ -40,10 +40,10 @@ export function fetchDeskSession() {
   return request<{ ok: boolean; user: string }>('/api/auth/me');
 }
 
-export function loginDesk(username: string, password: string) {
+export function loginDesk(email: string, password: string) {
   return request<{ ok: boolean; user: string }>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   }).then((body) => body.user);
 }
 

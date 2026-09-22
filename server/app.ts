@@ -1,41 +1,44 @@
 import 'dotenv/config';
 import express, { Router, type Request, type Response, type NextFunction } from 'express';
-import { ensureSchema, pool } from './db.ts';
+import { pool } from './db.ts';
 import { corsMiddleware } from './cors.ts';
 import { deleteReceipt, getReceipt, listReceipts, upsertReceipt } from './receiptsRepo.ts';
 import { deleteItinerary, getItinerary, listItineraries, upsertItinerary } from './itinerariesRepo.ts';
 import { handleLogin, handleLogout, handleMe, requireAuth } from './auth.ts';
 
 const apiRouter = Router();
-let schemaReady: Promise<void> | null = null;
 
-function ready() {
-  if (!schemaReady) {
-    schemaReady = ensureSchema().catch((err) => {
-      schemaReady = null;
-      throw err;
-    });
+function pingDb() {
+  if (!pool) {
+    const err = new Error('DATABASE_URL is not set');
+    (err as Error & { status?: number }).status = 503;
+    throw err;
   }
-  return schemaReady;
+  return pool.query('SELECT 1');
 }
 
 apiRouter.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path === '/health' || req.path.startsWith('/public/')) return next();
   if (req.path === '/auth/login' || req.path === '/auth/logout' || req.path === '/auth/me') return next();
-  return requireAuth(req, res, next);
+  void requireAuth(req, res, next).catch(next);
 });
 
-apiRouter.post('/auth/login', handleLogin);
-apiRouter.post('/auth/logout', handleLogout);
-apiRouter.get('/auth/me', handleMe);
+apiRouter.post('/auth/login', (req, res, next) => {
+  void handleLogin(req, res).catch(next);
+});
+apiRouter.post('/auth/logout', (req, res, next) => {
+  void handleLogout(req, res).catch(next);
+});
+apiRouter.get('/auth/me', (req, res, next) => {
+  void handleMe(req, res).catch(next);
+});
 
 apiRouter.get('/health', async (_req, res) => {
   if (!pool) {
     return res.status(503).json({ ok: false, database: 'missing', error: 'DATABASE_URL is not set' });
   }
   try {
-    await ready();
-    await pool.query('SELECT 1');
+    await pingDb();
     return res.json({ ok: true, database: 'connected' });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Database error';
@@ -51,7 +54,6 @@ function sendError(res: Response, err: unknown) {
 
 apiRouter.get('/receipts', async (_req, res) => {
   try {
-    await ready();
     res.json(await listReceipts());
   } catch (err) {
     sendError(res, err);
@@ -60,7 +62,6 @@ apiRouter.get('/receipts', async (_req, res) => {
 
 apiRouter.put('/receipts/:id', async (req, res) => {
   try {
-    await ready();
     const id = String(req.params.id || '');
     if (!id) return res.status(400).json({ error: 'Missing id' });
     res.json(await upsertReceipt(id, req.body || {}));
@@ -71,7 +72,6 @@ apiRouter.put('/receipts/:id', async (req, res) => {
 
 apiRouter.delete('/receipts/:id', async (req, res) => {
   try {
-    await ready();
     const ok = await deleteReceipt(String(req.params.id));
     res.status(ok ? 204 : 404).end();
   } catch (err) {
@@ -81,7 +81,6 @@ apiRouter.delete('/receipts/:id', async (req, res) => {
 
 apiRouter.get('/itineraries', async (_req, res) => {
   try {
-    await ready();
     res.json(await listItineraries());
   } catch (err) {
     sendError(res, err);
@@ -90,7 +89,6 @@ apiRouter.get('/itineraries', async (_req, res) => {
 
 apiRouter.put('/itineraries/:id', async (req, res) => {
   try {
-    await ready();
     const id = String(req.params.id || '');
     if (!id) return res.status(400).json({ error: 'Missing id' });
     res.json(await upsertItinerary(id, req.body || {}));
@@ -101,7 +99,6 @@ apiRouter.put('/itineraries/:id', async (req, res) => {
 
 apiRouter.delete('/itineraries/:id', async (req, res) => {
   try {
-    await ready();
     const ok = await deleteItinerary(String(req.params.id));
     res.status(ok ? 204 : 404).end();
   } catch (err) {
@@ -111,7 +108,6 @@ apiRouter.delete('/itineraries/:id', async (req, res) => {
 
 apiRouter.get('/public/receipts/:id', async (req, res) => {
   try {
-    await ready();
     const doc = await getReceipt(String(req.params.id));
     if (!doc) return res.status(404).json({ ok: false, error: 'Receipt not found' });
     res.json({ ok: true, type: 'receipt', document: doc });
@@ -122,7 +118,6 @@ apiRouter.get('/public/receipts/:id', async (req, res) => {
 
 apiRouter.get('/public/itineraries/:id', async (req, res) => {
   try {
-    await ready();
     const doc = await getItinerary(String(req.params.id));
     if (!doc) return res.status(404).json({ ok: false, error: 'Ticket not found' });
     res.json({ ok: true, type: 'itinerary', document: doc });
@@ -141,5 +136,8 @@ export function createApiExpress() {
   app.options('*', corsMiddleware);
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', apiRouter);
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    sendError(res, err);
+  });
   return app;
 }

@@ -54,11 +54,6 @@ export const VerifyPage: React.FC = () => {
     }
 
     const run = async () => {
-      if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
-        setError(humanizeVerifyError('Задайте VITE_API_URL на Vercel — адрес Railway API для проверки документов.'));
-        setStatus('error');
-        return;
-      }
       try {
         if (parsed.kind === 'receipt') {
           const doc = await fetchPublicReceipt(parsed.id);

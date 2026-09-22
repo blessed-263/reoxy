@@ -18,7 +18,7 @@ export const pool = connectionString
   ? new Pool({
       connectionString,
       ssl: sslConfig(),
-      max: 10,
+      max: 1,
     })
   : null;
 
@@ -42,6 +42,14 @@ async function tableExists(table: string) {
   return rows.length > 0;
 }
 
+function sqlStatements(sql: string) {
+  return sql
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => `${part};`);
+}
+
 async function migrateLegacyJson() {
   if (!pool) return;
   const receiptsAreJson = (await tableExists('receipts')) && (await hasColumn('receipts', 'payload'));
@@ -54,7 +62,9 @@ async function migrateLegacyJson() {
     await pool.query(`ALTER TABLE itineraries RENAME TO itineraries_json_legacy`);
   }
 
-  await pool.query(SCHEMA_SQL);
+  for (const statement of sqlStatements(SCHEMA_SQL)) {
+    await pool.query(statement);
+  }
 
   if (receiptsAreJson) {
     const { upsertReceipt } = await import('./receiptsRepo.ts');
@@ -79,10 +89,14 @@ async function migrateLegacyJson() {
   }
 }
 
-export async function ensureSchema() {
-  if (!pool) return;
+export async function migrateSchema() {
+  if (!pool) {
+    throw new Error('DATABASE_URL is not set');
+  }
   await migrateLegacyJson();
-  await pool.query(SCHEMA_SQL);
+  for (const statement of sqlStatements(SCHEMA_SQL)) {
+    await pool.query(statement);
+  }
   if (!(await hasColumn('itineraries', 'payment_method'))) {
     await pool.query(
       `ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'bank_card'`

@@ -1,4 +1,4 @@
-const API = (process.env.SEED_API_URL || 'https://reoxy-production.up.railway.app').replace(/\/$/, '');
+const API = (process.env.SEED_API_URL || 'https://reoxy.vercel.app').replace(/\/$/, '');
 const SEED_ID = 'SEED-ROX-0001';
 
 const seededReceipt = {

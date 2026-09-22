@@ -8,7 +8,7 @@ interface AuthWallProps {
 }
 
 export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
     setError('');
     setBusy(true);
     try {
-      const user = await loginDesk(username, password);
+      const user = await loginDesk(email, password);
       onAuthenticated(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Access denied');
@@ -52,17 +52,18 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
 
           <div className="mt-6 space-y-4">
             <div>
-              <label className="ui-label">Operator</label>
+              <label className="ui-label">Email</label>
               <input
+                type="email"
                 autoComplete="username"
                 autoFocus
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="ui-field"
               />
             </div>
             <div>
-              <label className="ui-label">Passphrase</label>
+              <label className="ui-label">Password</label>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -81,7 +82,7 @@ export const AuthWall: React.FC<AuthWallProps> = ({ onAuthenticated }) => {
 
           <button
             type="submit"
-            disabled={busy || !username || !password}
+            disabled={busy || !email || !password}
             className="mt-6 w-full rounded-full bg-slate-900 text-white h-12 text-[15px] font-semibold hover:bg-slate-800 disabled:opacity-40 transition-colors"
           >
             {busy ? 'Checking…' : 'Enter desk'}

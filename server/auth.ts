@@ -1,53 +1,14 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { authConfigured, createAnonClient, isDeskOperator } from './supabaseAuth.ts';
 
-const COOKIE = 'desk_session';
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const ACCESS_COOKIE = 'desk_access';
+const REFRESH_COOKIE = 'desk_refresh';
+const ACCESS_MAX_AGE = 60 * 60;
+const REFRESH_MAX_AGE = 7 * 24 * 60 * 60;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX = 8;
 
-type SessionPayload = {
-  u: string;
-  iat: number;
-  exp: number;
-};
-
 const loginHits = new Map<string, { n: number; reset: number }>();
-
-function envUser() {
-  return String(process.env.AUTH_USER || '').trim();
-}
-
-function envPassword() {
-  return String(process.env.AUTH_PASSWORD || '');
-}
-
-function signingKey() {
-  const secret = String(process.env.AUTH_SECRET || process.env.AUTH_PASSWORD || '').trim();
-  return secret;
-}
-
-export function authConfigured() {
-  return Boolean(envUser() && envPassword() && signingKey());
-}
-
-function b64url(buf: Buffer) {
-  return buf.toString('base64url');
-}
-
-function sign(encoded: string) {
-  return b64url(createHmac('sha256', signingKey()).update(encoded).digest());
-}
-
-function safeEqual(a: string, b: string) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  if (left.length !== right.length) {
-    timingSafeEqual(left, left);
-    return false;
-  }
-  return timingSafeEqual(left, right);
-}
 
 function parseCookies(header?: string) {
   const out: Record<string, string> = {};
@@ -61,45 +22,32 @@ function parseCookies(header?: string) {
   return out;
 }
 
-function readSession(req: Request): SessionPayload | null {
-  if (!authConfigured()) return null;
-  const raw = parseCookies(req.headers.cookie)[COOKIE];
-  if (!raw) return null;
-  const dot = raw.lastIndexOf('.');
-  if (dot < 1) return null;
-  const encoded = raw.slice(0, dot);
-  const sig = raw.slice(dot + 1);
-  if (!safeEqual(sign(encoded), sig)) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SessionPayload;
-    if (!payload?.u || payload.exp < Date.now()) return null;
-    if (!safeEqual(payload.u, envUser())) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-function cookieParts(req: Request, value: string, maxAge: number) {
+function cookieParts(req: Request, name: string, value: string, maxAge: number) {
   const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
   const secure = proto === 'https';
-  const parts = [`${COOKIE}=${value}`, 'HttpOnly', 'Path=/', 'SameSite=Lax', `Max-Age=${maxAge}`];
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    'HttpOnly',
+    'Path=/',
+    'SameSite=Lax',
+    `Max-Age=${maxAge}`,
+  ];
   if (secure) parts.push('Secure');
   return parts.join('; ');
 }
 
-export function setSessionCookie(req: Request, res: Response, username: string) {
-  const payload: SessionPayload = {
-    u: username,
-    iat: Date.now(),
-    exp: Date.now() + MAX_AGE_MS,
-  };
-  const encoded = b64url(Buffer.from(JSON.stringify(payload)));
-  res.setHeader('Set-Cookie', cookieParts(req, `${encoded}.${sign(encoded)}`, Math.floor(MAX_AGE_MS / 1000)));
+function setAuthCookies(req: Request, res: Response, accessToken: string, refreshToken: string) {
+  res.setHeader('Set-Cookie', [
+    cookieParts(req, ACCESS_COOKIE, accessToken, ACCESS_MAX_AGE),
+    cookieParts(req, REFRESH_COOKIE, refreshToken, REFRESH_MAX_AGE),
+  ]);
 }
 
-export function clearSessionCookie(req: Request, res: Response) {
-  res.setHeader('Set-Cookie', cookieParts(req, '', 0));
+function clearAuthCookies(req: Request, res: Response) {
+  res.setHeader('Set-Cookie', [
+    cookieParts(req, ACCESS_COOKIE, '', 0),
+    cookieParts(req, REFRESH_COOKIE, '', 0),
+  ]);
 }
 
 function clientIp(req: Request) {
@@ -119,11 +67,38 @@ function loginAllowed(ip: string) {
   return true;
 }
 
-export function verifyCredentials(username: string, password: string) {
-  return safeEqual(username.trim(), envUser()) && safeEqual(password, envPassword());
+async function resolveOperator(req: Request, res: Response): Promise<string | null> {
+  if (!authConfigured()) return null;
+  const cookies = parseCookies(req.headers.cookie);
+  let access = cookies[ACCESS_COOKIE] || '';
+  const refresh = cookies[REFRESH_COOKIE] || '';
+  if (!access && !refresh) return null;
+
+  const supabase = createAnonClient();
+
+  const tryUser = async (token: string) => {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user?.email) return null;
+    if (!isDeskOperator(data.user.email)) return null;
+    return data.user.email;
+  };
+
+  if (access) {
+    const email = await tryUser(access);
+    if (email) return email;
+  }
+
+  if (!refresh) return null;
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refresh });
+  if (error || !data.session?.access_token || !data.user?.email) return null;
+  if (!isDeskOperator(data.user.email)) return null;
+  setAuthCookies(req, res, data.session.access_token, data.session.refresh_token);
+  return data.user.email;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export { authConfigured };
+
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!authConfigured()) {
     return res.status(503).json({ error: 'Desk lock is not configured on the server.' });
   }
@@ -131,14 +106,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (machine && req.header('x-api-key') === machine) {
     return next();
   }
-  const session = readSession(req);
-  if (!session) {
+  const email = await resolveOperator(req, res);
+  if (!email) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 }
 
-export function handleLogin(req: Request, res: Response) {
+export async function handleLogin(req: Request, res: Response) {
   if (!authConfigured()) {
     return res.status(503).json({ error: 'Desk lock is not configured on the server.' });
   }
@@ -146,26 +121,47 @@ export function handleLogin(req: Request, res: Response) {
   if (!loginAllowed(ip)) {
     return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
   }
-  const username = typeof req.body?.username === 'string' ? req.body.username : '';
+  const email = String(req.body?.email || req.body?.username || '').trim().toLowerCase();
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
-  if (!verifyCredentials(username, password)) {
-    randomBytes(8);
+  if (!email || !password) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  setSessionCookie(req, res, envUser());
-  return res.json({ ok: true, user: envUser() });
+
+  const supabase = createAnonClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user?.email) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  if (!isDeskOperator(data.user.email)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  setAuthCookies(req, res, data.session.access_token, data.session.refresh_token);
+  return res.json({ ok: true, user: data.user.email });
 }
 
-export function handleLogout(req: Request, res: Response) {
-  clearSessionCookie(req, res);
+export async function handleLogout(req: Request, res: Response) {
+  const cookies = parseCookies(req.headers.cookie);
+  const access = cookies[ACCESS_COOKIE];
+  const refresh = cookies[REFRESH_COOKIE];
+  if (access && refresh && authConfigured()) {
+    try {
+      const supabase = createAnonClient();
+      await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+      await supabase.auth.signOut();
+    } catch {
+      // Cookies are cleared either way.
+    }
+  }
+  clearAuthCookies(req, res);
   return res.json({ ok: true });
 }
 
-export function handleMe(req: Request, res: Response) {
+export async function handleMe(req: Request, res: Response) {
   if (!authConfigured()) {
     return res.status(503).json({ error: 'Desk lock is not configured on the server.' });
   }
-  const session = readSession(req);
-  if (!session) return res.status(401).json({ error: 'Unauthorized' });
-  return res.json({ ok: true, user: session.u });
+  const email = await resolveOperator(req, res);
+  if (!email) return res.status(401).json({ error: 'Unauthorized' });
+  return res.json({ ok: true, user: email });
 }
