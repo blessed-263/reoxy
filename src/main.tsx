@@ -59,15 +59,27 @@ import { AuthGate } from './components/AuthGate';
 import App from './App.tsx';
 import {VerifyPage} from './verify/VerifyPage.tsx';
 import { LandingPage } from './pages/LandingPage.tsx';
+import { PortalPage } from './pages/PortalPage.tsx';
 import './index.css';
 
 const path = window.location.pathname;
 const isVerifyRoute = path.startsWith('/verify/');
 const isDeskRoute = path === '/desk' || path.startsWith('/desk/');
+const isPortalRoute = path === '/portal' || path.startsWith('/portal/');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isVerifyRoute ? <VerifyPage /> : isDeskRoute ? <AuthGate><App /></AuthGate> : <LandingPage />}
+    {isVerifyRoute ? (
+      <VerifyPage />
+    ) : isDeskRoute ? (
+      <AuthGate>
+        <App />
+      </AuthGate>
+    ) : isPortalRoute ? (
+      <PortalPage />
+    ) : (
+      <LandingPage />
+    )}
   </StrictMode>,
 );
 

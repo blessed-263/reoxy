@@ -5,21 +5,25 @@ interface MicorLogoProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'dark' | 'light';
   showText?: boolean;
+  showTagline?: boolean;
 }
 
 export const MicorLogo: React.FC<MicorLogoProps> = ({
   className = '',
   size = 'md',
   variant = 'dark',
-  showText = true
+  showText = true,
+  showTagline = false,
 }) => {
   const isDark = variant === 'dark';
-  
+
   const iconSizes = {
     sm: 'w-7 h-7',
     md: 'w-9 h-9',
     lg: 'w-12 h-12'
   };
+  const wordSize = size === 'lg' ? 'text-[22px]' : showTagline ? 'text-lg' : 'text-2xl';
+  const tagSize = size === 'lg' ? 'text-[11px] tracking-[0.18em]' : 'text-[9px] tracking-[0.16em]';
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
@@ -44,14 +48,23 @@ export const MicorLogo: React.FC<MicorLogoProps> = ({
       </svg>
 
       {showText && (
-        <span
-          className={`font-sans font-bold tracking-tight lowercase text-2xl ${
-            isDark ? 'text-[#0f172a]' : 'text-white'
-          }`}
-          style={{ letterSpacing: '-0.03em' }}
-        >
-          micor
-        </span>
+        <div className="flex flex-col leading-none">
+          <span
+            className={`font-sans font-bold tracking-tight lowercase ${wordSize} ${
+              isDark ? 'text-[#0f172a]' : 'text-white'
+            }`}
+            style={{ letterSpacing: '-0.03em' }}
+          >
+            micor
+          </span>
+          {showTagline && (
+            <span className={`${tagSize} uppercase font-sans font-medium mt-0.5 ${
+              isDark ? 'text-[#475569]' : 'text-[#94a3b8]'
+            }`}>
+              Aviation
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

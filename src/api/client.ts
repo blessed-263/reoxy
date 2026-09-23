@@ -22,7 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers || {}),
     },
   });
-  if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/api/auth/')) {
+  if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/api/auth/') && !path.startsWith('/api/portal/')) {
     window.dispatchEvent(new Event('reoxy:unauthorized'));
   }
   if (res.status === 204) {
@@ -100,4 +100,59 @@ export function fetchPublicItinerary(id: string) {
   return request<{ ok: boolean; document: Itinerary }>(
     `/api/public/itineraries/${encodeURIComponent(id)}`
   ).then((body) => body.document);
+}
+
+export type PortalService = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priceUsd: number;
+  badge: string;
+};
+
+export type PortalQuote = {
+  id: string;
+  notes: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  items: { title: string; unitPrice: number; total: number }[];
+};
+
+export function signupPortal(input: { fullName: string; email: string; phone: string; password: string }) {
+  return request<{ ok: boolean; user: string; name?: string }>('/api/portal/signup', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function loginPortal(email: string, password: string) {
+  return request<{ ok: boolean; user: string }>('/api/portal/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  }).then((body) => body.user);
+}
+
+export function logoutPortal() {
+  return request<{ ok: boolean }>('/api/portal/logout', { method: 'POST' });
+}
+
+export function fetchPortalSession() {
+  return request<{ ok: boolean; user: string; userId: string }>('/api/portal/me');
+}
+
+export function fetchPortalServices() {
+  return request<PortalService[]>('/api/portal/services');
+}
+
+export function fetchPortalQuotes() {
+  return request<PortalQuote[]>('/api/portal/quotes');
+}
+
+export function submitPortalQuote(serviceIds: string[], notes: string) {
+  return request<PortalQuote>('/api/portal/quotes', {
+    method: 'POST',
+    body: JSON.stringify({ serviceIds, notes }),
+  });
 }

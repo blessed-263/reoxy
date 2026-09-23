@@ -878,26 +878,44 @@ function supabaseUrl() {
 function supabaseAnonKey() {
   return String(process.env.SUPABASE_ANON_KEY || "").trim();
 }
+function supabaseServiceRoleKey() {
+  return String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+}
 function deskOperators() {
   return String(process.env.DESK_OPERATORS || "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
 }
 function authConfigured() {
   return Boolean(supabaseUrl() && supabaseAnonKey() && deskOperators().length > 0);
 }
+function portalAuthConfigured() {
+  return Boolean(supabaseUrl() && supabaseAnonKey() && supabaseServiceRoleKey());
+}
 function isDeskOperator(email) {
   if (!email) return false;
   return deskOperators().includes(email.trim().toLowerCase());
 }
-function createAnonClient() {
-  if (!authConfigured()) {
-    throw new Error("Supabase Auth is not configured");
-  }
-  return (0, import_supabase_js.createClient)(supabaseUrl(), supabaseAnonKey(), {
+function authClientOptions() {
+  return {
     auth: {
       persistSession: false,
       autoRefreshToken: false
     }
-  });
+  };
+}
+function createAnonClient() {
+  if (!supabaseUrl() || !supabaseAnonKey()) {
+    throw new Error("Supabase Auth is not configured");
+  }
+  return (0, import_supabase_js.createClient)(supabaseUrl(), supabaseAnonKey(), authClientOptions());
+}
+function createServiceClient() {
+  if (!supabaseUrl() || !supabaseServiceRoleKey()) {
+    throw new Error("Supabase service role is not configured");
+  }
+  return (0, import_supabase_js.createClient)(supabaseUrl(), supabaseServiceRoleKey(), authClientOptions());
+}
+function isCustomerUser(user) {
+  return String(user?.app_metadata?.role || "") === "customer";
 }
 
 // server/auth.ts
@@ -1046,6 +1064,569 @@ async function handleMe(req, res) {
   return res.json({ ok: true, user: email });
 }
 
+// server/portalQuotes.ts
+var import_crypto = require("crypto");
+init_db();
+
+// src/data/servicePresets.ts
+var REOXY_SERVICES = [
+  {
+    id: "trans_degrees",
+    title: "Degrees & Diplomas Translation",
+    description: "Official translations for academic degree certificates and diplomas with all required stamps included.",
+    category: "translation",
+    defaultPriceRUB: 5600,
+    defaultPriceUSD: 65,
+    hasStamps: true,
+    badge: "Popular Academic"
+  },
+  {
+    id: "trans_transcripts",
+    title: "Academic Transcripts & Marksheets",
+    description: "Official translations for academic transcripts, course modules, and grade sheets accepted worldwide.",
+    category: "translation",
+    defaultPriceRUB: 4200,
+    defaultPriceUSD: 48,
+    hasStamps: true,
+    badge: "Worldwide Acceptance"
+  },
+  {
+    id: "trans_visas",
+    title: "Visa & Legal Documents Translation",
+    description: "Official translations for visa applications, birth certificates, police clearance, and embassy submissions.",
+    category: "translation",
+    defaultPriceRUB: 3500,
+    defaultPriceUSD: 40,
+    hasStamps: true,
+    badge: "Embassy Approved"
+  },
+  {
+    id: "print_dissertations",
+    title: "Printing & Binding (Dissertations & Theses)",
+    description: "Professional high-grade printing and hardcover / thermal binding for academic thesis submissions.",
+    category: "printing",
+    defaultPriceRUB: 2800,
+    defaultPriceUSD: 32,
+    hasStamps: false,
+    badge: "High Grade"
+  },
+  {
+    id: "print_academic",
+    title: "Academic Printing & Spiral Binding",
+    description: "Crisp color/monochrome document printing and spiral binding for coursework and research papers.",
+    category: "printing",
+    defaultPriceRUB: 1200,
+    defaultPriceUSD: 15,
+    hasStamps: false
+  },
+  {
+    id: "cv_review",
+    title: "CV & Resume Review",
+    description: "Structured review of your CV or resume before job applications and graduate placements.",
+    category: "cv_review",
+    defaultPriceRUB: 2500,
+    defaultPriceUSD: 30,
+    hasStamps: false,
+    badge: "Career Ready"
+  },
+  {
+    id: "legalisation_consult",
+    title: "Legalisation & Apostille Consultation",
+    description: "Guidance and advisory support through university and foreign ministry legalisation procedures.",
+    category: "legalisation",
+    defaultPriceRUB: 0,
+    defaultPriceUSD: 0,
+    hasStamps: false,
+    badge: "Free Consultation"
+  }
+];
+
+// server/portalQuotes.ts
+function catalogServices() {
+  return REOXY_SERVICES.map((service) => ({
+    id: service.id,
+    title: service.title,
+    description: service.description,
+    category: service.category,
+    priceUsd: Number(service.defaultPriceUSD) || 0,
+    badge: service.badge || ""
+  }));
+}
+async function upsertPortalProfile(input) {
+  const db = requirePool();
+  await db.query(
+    `INSERT INTO portal_profiles (user_id, full_name, email, phone, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET
+       full_name = CASE WHEN EXCLUDED.full_name <> '' THEN EXCLUDED.full_name ELSE portal_profiles.full_name END,
+       email = EXCLUDED.email,
+       phone = CASE WHEN EXCLUDED.phone <> '' THEN EXCLUDED.phone ELSE portal_profiles.phone END,
+       updated_at = NOW()`,
+    [input.userId, input.fullName, input.email, input.phone]
+  );
+}
+async function nextQuoteId() {
+  const db = requirePool();
+  const year = (/* @__PURE__ */ new Date()).getFullYear();
+  const prefix = `RQ-${year}-`;
+  const { rows } = await db.query(
+    `SELECT id FROM portal_quotes WHERE id LIKE $1 ORDER BY id DESC LIMIT 1`,
+    [`${prefix}%`]
+  );
+  const last = rows[0]?.id || "";
+  const n = Number(last.slice(prefix.length)) || 0;
+  return `${prefix}${String(n + 1).padStart(4, "0")}`;
+}
+async function createPortalQuote(input) {
+  const selected = catalogServices().filter((service) => input.serviceIds.includes(service.id));
+  if (!selected.length) {
+    const err = new Error("Select at least one service");
+    err.status = 400;
+    throw err;
+  }
+  const items = selected.map((service, index) => {
+    const unitPrice = service.priceUsd;
+    return {
+      id: (0, import_crypto.randomUUID)(),
+      serviceId: service.id,
+      title: service.title,
+      description: service.description,
+      quantity: 1,
+      unitPrice,
+      total: unitPrice,
+      sortOrder: index
+    };
+  });
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+  const db = requirePool();
+  const id = await nextQuoteId();
+  await db.query(
+    `INSERT INTO portal_quotes (id, user_id, currency, notes, status, subtotal, total)
+     VALUES ($1, $2, 'USD', $3, 'quoted', $4, $4)`,
+    [id, input.userId, input.notes, total]
+  );
+  for (const item of items) {
+    await db.query(
+      `INSERT INTO portal_quote_items
+        (id, quote_id, service_id, title, description, quantity, unit_price, total, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        item.id,
+        id,
+        item.serviceId,
+        item.title,
+        item.description,
+        item.quantity,
+        item.unitPrice,
+        item.total,
+        item.sortOrder
+      ]
+    );
+  }
+  const quote = await getPortalQuote(id, input.userId);
+  if (!quote) {
+    throw new Error("Quote was not saved");
+  }
+  return quote;
+}
+function mapQuote(row, items, customer) {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    currency: "USD",
+    notes: String(row.notes || ""),
+    status: String(row.status || "quoted"),
+    subtotal: Number(row.subtotal) || 0,
+    total: Number(row.total) || 0,
+    createdAt: row.created_at ? new Date(String(row.created_at)).toISOString() : "",
+    items,
+    customer
+  };
+}
+async function getPortalQuote(id, userId) {
+  const db = requirePool();
+  const { rows } = await db.query(
+    `SELECT q.*, p.full_name, p.email, p.phone
+     FROM portal_quotes q
+     JOIN portal_profiles p ON p.user_id = q.user_id
+     WHERE q.id = $1 AND q.user_id = $2`,
+    [id, userId]
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const { rows: itemRows } = await db.query(
+    `SELECT * FROM portal_quote_items WHERE quote_id = $1 ORDER BY sort_order ASC`,
+    [id]
+  );
+  return mapQuote(
+    row,
+    itemRows.map((item) => ({
+      id: String(item.id),
+      serviceId: String(item.service_id),
+      title: String(item.title),
+      description: String(item.description || ""),
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unit_price) || 0,
+      total: Number(item.total) || 0
+    })),
+    {
+      fullName: String(row.full_name || ""),
+      email: String(row.email || ""),
+      phone: String(row.phone || "")
+    }
+  );
+}
+async function listPortalQuotes(userId) {
+  const db = requirePool();
+  const { rows } = await db.query(
+    `SELECT * FROM portal_quotes WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]
+  );
+  const quotes = [];
+  for (const row of rows) {
+    const { rows: itemRows } = await db.query(
+      `SELECT * FROM portal_quote_items WHERE quote_id = $1 ORDER BY sort_order ASC`,
+      [row.id]
+    );
+    quotes.push(
+      mapQuote(
+        row,
+        itemRows.map((item) => ({
+          id: String(item.id),
+          serviceId: String(item.service_id),
+          title: String(item.title),
+          description: String(item.description || ""),
+          quantity: Number(item.quantity) || 1,
+          unitPrice: Number(item.unit_price) || 0,
+          total: Number(item.total) || 0
+        }))
+      )
+    );
+  }
+  return quotes;
+}
+
+// server/portalAuth.ts
+var ACCESS_COOKIE2 = "portal_access";
+var REFRESH_COOKIE2 = "portal_refresh";
+var ACCESS_MAX_AGE2 = 60 * 60;
+var REFRESH_MAX_AGE2 = 7 * 24 * 60 * 60;
+var LOGIN_WINDOW_MS2 = 15 * 60 * 1e3;
+var LOGIN_MAX2 = 12;
+var loginHits2 = /* @__PURE__ */ new Map();
+function parseCookies2(header) {
+  const out = {};
+  for (const part of String(header || "").split(";")) {
+    const idx = part.indexOf("=");
+    if (idx < 1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key) out[key] = decodeURIComponent(value);
+  }
+  return out;
+}
+function cookieParts2(req, name, value, maxAge) {
+  const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "http").split(",")[0].trim();
+  const secure = proto === "https";
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    "HttpOnly",
+    "Path=/",
+    "SameSite=Lax",
+    `Max-Age=${maxAge}`
+  ];
+  if (secure) parts.push("Secure");
+  return parts.join("; ");
+}
+function setPortalCookies(req, res, accessToken, refreshToken) {
+  res.setHeader("Set-Cookie", [
+    cookieParts2(req, ACCESS_COOKIE2, accessToken, ACCESS_MAX_AGE2),
+    cookieParts2(req, REFRESH_COOKIE2, refreshToken, REFRESH_MAX_AGE2)
+  ]);
+}
+function clearPortalCookies(req, res) {
+  res.setHeader("Set-Cookie", [
+    cookieParts2(req, ACCESS_COOKIE2, "", 0),
+    cookieParts2(req, REFRESH_COOKIE2, "", 0)
+  ]);
+}
+function clientIp2(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket.remoteAddress || "unknown";
+}
+function loginAllowed2(ip) {
+  const now = Date.now();
+  const row = loginHits2.get(ip);
+  if (!row || row.reset < now) {
+    loginHits2.set(ip, { n: 1, reset: now + LOGIN_WINDOW_MS2 });
+    return true;
+  }
+  if (row.n >= LOGIN_MAX2) return false;
+  row.n += 1;
+  return true;
+}
+async function sessionFromTokens(access, refresh, req, res) {
+  const supabase = createAnonClient();
+  if (access) {
+    const { data: data2, error: error2 } = await supabase.auth.getUser(access);
+    if (!error2 && data2.user?.email && isCustomerUser(data2.user)) {
+      return { userId: data2.user.id, email: data2.user.email };
+    }
+  }
+  if (!refresh) return null;
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refresh });
+  if (error || !data.session?.access_token || !data.user?.email || !isCustomerUser(data.user)) {
+    return null;
+  }
+  setPortalCookies(req, res, data.session.access_token, data.session.refresh_token);
+  return { userId: data.user.id, email: data.user.email };
+}
+async function resolvePortalSession(req, res) {
+  if (!portalAuthConfigured()) return null;
+  const cookies = parseCookies2(req.headers.cookie);
+  return sessionFromTokens(cookies[ACCESS_COOKIE2] || "", cookies[REFRESH_COOKIE2] || "", req, res);
+}
+async function requirePortalAuth(req, res, next) {
+  if (!portalAuthConfigured()) {
+    return res.status(503).json({ error: "Portal is not configured on the server." });
+  }
+  const session = await resolvePortalSession(req, res);
+  if (!session) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  req.portal = session;
+  next();
+}
+function portalUser(req) {
+  return req.portal;
+}
+async function handlePortalSignup(req, res) {
+  if (!portalAuthConfigured()) {
+    return res.status(503).json({ error: "Portal is not configured on the server." });
+  }
+  const ip = clientIp2(req);
+  if (!loginAllowed2(ip)) {
+    return res.status(429).json({ error: "Too many attempts. Try again in 15 minutes." });
+  }
+  const fullName = String(req.body?.fullName || req.body?.name || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const phone = String(req.body?.phone || "").trim();
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: "Name, email, and password are required" });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters" });
+  }
+  const admin = createServiceClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    app_metadata: { role: "customer" },
+    user_metadata: { full_name: fullName, phone }
+  });
+  if (createError || !created.user) {
+    const message = createError?.message || "Could not create account";
+    if (/already/i.test(message) || /registered/i.test(message)) {
+      return res.status(409).json({ error: "An account with this email already exists" });
+    }
+    console.error("[portal] signup", message);
+    return res.status(400).json({ error: "Could not create account" });
+  }
+  await upsertPortalProfile({
+    userId: created.user.id,
+    fullName,
+    email,
+    phone
+  });
+  const anon = createAnonClient();
+  const { data, error } = await anon.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user?.email) {
+    return res.status(201).json({ ok: true, user: email, needsLogin: true });
+  }
+  setPortalCookies(req, res, data.session.access_token, data.session.refresh_token);
+  return res.status(201).json({ ok: true, user: data.user.email, name: fullName });
+}
+async function handlePortalLogin(req, res) {
+  if (!portalAuthConfigured()) {
+    return res.status(503).json({ error: "Portal is not configured on the server." });
+  }
+  const ip = clientIp2(req);
+  if (!loginAllowed2(ip)) {
+    return res.status(429).json({ error: "Too many attempts. Try again in 15 minutes." });
+  }
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+  const supabase = createAnonClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user?.email) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  if (!isCustomerUser(data.user)) {
+    return res.status(403).json({ error: "This account is not a customer portal account" });
+  }
+  await upsertPortalProfile({
+    userId: data.user.id,
+    fullName: String(data.user.user_metadata?.full_name || ""),
+    email: data.user.email,
+    phone: String(data.user.user_metadata?.phone || "")
+  });
+  setPortalCookies(req, res, data.session.access_token, data.session.refresh_token);
+  return res.json({ ok: true, user: data.user.email });
+}
+async function handlePortalLogout(req, res) {
+  const cookies = parseCookies2(req.headers.cookie);
+  const access = cookies[ACCESS_COOKIE2];
+  const refresh = cookies[REFRESH_COOKIE2];
+  if (access && refresh && portalAuthConfigured()) {
+    try {
+      const supabase = createAnonClient();
+      await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+      await supabase.auth.signOut();
+    } catch {
+    }
+  }
+  clearPortalCookies(req, res);
+  return res.json({ ok: true });
+}
+async function handlePortalMe(req, res) {
+  if (!portalAuthConfigured()) {
+    return res.status(503).json({ error: "Portal is not configured on the server." });
+  }
+  const session = await resolvePortalSession(req, res);
+  if (!session) return res.status(401).json({ error: "Unauthorized" });
+  return res.json({ ok: true, user: session.email, userId: session.userId });
+}
+function portalSessionFrom(req) {
+  return portalUser(req);
+}
+
+// src/data/companyInfo.ts
+var REOXY_COMPANY = {
+  name: "AO \u0420\u0435O\u043A\u0441\u0438",
+  shortName: "AO \u0420\u0435O\u043A\u0441\u0438",
+  brandName: "ReOxy",
+  tagline: "Your documents, handled with care",
+  subtagline: "Certified translation, professional printing, and document preparation for academic submissions, visa applications, and employment.",
+  registrationStatus: "\u0410\u043A\u0446\u0438\u043E\u043D\u0435\u0440\u043D\u043E\u0435 \u043E\u0431\u0449\u0435\u0441\u0442\u0432\u043E",
+  registrationNumber: "REG \u2116 2024/7749",
+  inn: "9725148830",
+  ogrn: "1247700167890",
+  verificationPledge: "Certified & Verified \u2014 100% Confidential Handling",
+  contacts: {
+    phones: ["+7 985 052-04-66", "+7 977 774-98-35"],
+    primaryPhone: "+7 985 052-04-66",
+    secondaryPhone: "+7 977 774-98-35",
+    email: "reoxytechnologies@gmail.com",
+    website: "reoxy.co.zw",
+    address: "Studencheskaya 33k6"
+  },
+  trustBadges: [
+    { label: "Core Services", value: "3+" },
+    { label: "Typical Turnaround", value: "48hr" },
+    { label: "Confidential Handling", value: "100%" },
+    { label: "Status", value: "Registered" }
+  ],
+  officialNotice: "Beware of fraudulent services. Check our official channels and protect your documents.",
+  copyright: "\xA9 2026 AO \u0420\u0435O\u043A\u0441\u0438. \u0412\u0441\u0435 \u043F\u0440\u0430\u0432\u0430 \u0437\u0430\u0449\u0438\u0449\u0435\u043D\u044B."
+};
+
+// server/portalMail.ts
+function escapeHtml(value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function money(amount) {
+  return `$${amount.toFixed(2)}`;
+}
+function itemsTable(quote) {
+  const rows = quote.items.map(
+    (item) => `<tr>
+          <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;">${escapeHtml(item.title)}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:right;">${money(item.unitPrice)}</td>
+        </tr>`
+  ).join("");
+  return `<table style="width:100%;border-collapse:collapse;font-size:14px;">${rows}</table>`;
+}
+function customerQuoteHtml(quote) {
+  const company = REOXY_COMPANY;
+  const notes = quote.notes ? `<p style="margin-top:16px;color:#475569;font-size:14px;"><strong>Notes</strong><br/>${escapeHtml(quote.notes)}</p>` : "";
+  return `<!doctype html>
+<html><body style="margin:0;background:#eef1f5;font-family:ui-sans-serif,system-ui,sans-serif;color:#0f172a;">
+  <div style="max-width:560px;margin:24px auto;background:#fff;border-radius:24px;padding:28px;border:1px solid #e2e8f0;">
+    <p style="margin:0;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#0369a1;">${escapeHtml(company.brandName)} quote</p>
+    <h1 style="margin:8px 0 0;font-size:22px;">${escapeHtml(quote.id)}</h1>
+    <p style="margin:8px 0 20px;color:#64748b;font-size:14px;">${escapeHtml(company.name)} \xB7 ${escapeHtml(company.contacts.email)}</p>
+    ${itemsTable(quote)}
+    <p style="margin:20px 0 0;font-size:18px;font-weight:600;">Total ${money(quote.total)} USD</p>
+    ${notes}
+    <p style="margin:24px 0 0;font-size:12px;color:#64748b;">This is a quote, not an invoice. Payment is due after we confirm the order.</p>
+  </div>
+</body></html>`;
+}
+function operatorQuoteHtml(quote) {
+  const customer = quote.customer;
+  return `<!doctype html>
+<html><body style="font-family:ui-sans-serif,system-ui,sans-serif;color:#0f172a;">
+  <p>New portal order <strong>${escapeHtml(quote.id)}</strong></p>
+  <p>
+    ${escapeHtml(customer?.fullName || "")}<br/>
+    ${escapeHtml(customer?.email || "")}<br/>
+    ${escapeHtml(customer?.phone || "")}
+  </p>
+  ${itemsTable(quote)}
+  <p><strong>Total ${money(quote.total)} USD</strong></p>
+  ${quote.notes ? `<p>Notes: ${escapeHtml(quote.notes)}</p>` : ""}
+</body></html>`;
+}
+async function sendResend(payload) {
+  const apiKey = String(process.env.RESEND_API_KEY || "").trim();
+  const from = String(process.env.RESEND_FROM || "").trim();
+  if (!apiKey || !from || !payload.to.length) {
+    console.warn("[portal] Resend skipped (RESEND_API_KEY / RESEND_FROM unset)");
+    return false;
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html
+    })
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("[portal] Resend error", res.status, body);
+    return false;
+  }
+  return true;
+}
+async function sendQuoteEmails(quote) {
+  const customerEmail = quote.customer?.email;
+  if (customerEmail) {
+    await sendResend({
+      to: [customerEmail],
+      subject: `${REOXY_COMPANY.brandName} quote ${quote.id}`,
+      html: customerQuoteHtml(quote)
+    });
+  }
+  const operators = deskOperators();
+  const alertTo = operators.length ? operators : [REOXY_COMPANY.contacts.email].filter(Boolean);
+  await sendResend({
+    to: alertTo,
+    subject: `New order ${quote.id}`,
+    html: operatorQuoteHtml(quote)
+  });
+}
+
 // server/app.ts
 var apiRouter = (0, import_express.Router)();
 function pingDb() {
@@ -1058,6 +1639,7 @@ function pingDb() {
 }
 apiRouter.use((req, res, next) => {
   if (req.path === "/health" || req.path.startsWith("/public/")) return next();
+  if (req.path.startsWith("/portal/")) return next();
   if (req.path === "/auth/login" || req.path === "/auth/logout" || req.path === "/auth/me") return next();
   void requireAuth(req, res, next).catch(next);
 });
@@ -1069,6 +1651,49 @@ apiRouter.post("/auth/logout", (req, res, next) => {
 });
 apiRouter.get("/auth/me", (req, res, next) => {
   void handleMe(req, res).catch(next);
+});
+apiRouter.post("/portal/signup", (req, res, next) => {
+  void handlePortalSignup(req, res).catch(next);
+});
+apiRouter.post("/portal/login", (req, res, next) => {
+  void handlePortalLogin(req, res).catch(next);
+});
+apiRouter.post("/portal/logout", (req, res, next) => {
+  void handlePortalLogout(req, res).catch(next);
+});
+apiRouter.get("/portal/me", (req, res, next) => {
+  void handlePortalMe(req, res).catch(next);
+});
+apiRouter.get("/portal/services", (_req, res) => {
+  res.json(catalogServices());
+});
+apiRouter.get("/portal/quotes", (req, res, next) => {
+  void requirePortalAuth(req, res, async () => {
+    try {
+      const session = portalSessionFrom(req);
+      if (!session) return res.status(401).json({ error: "Unauthorized" });
+      res.json(await listPortalQuotes(session.userId));
+    } catch (err) {
+      sendError(res, err);
+    }
+  }).catch(next);
+});
+apiRouter.post("/portal/quotes", (req, res, next) => {
+  void requirePortalAuth(req, res, async () => {
+    try {
+      const session = portalSessionFrom(req);
+      if (!session) return res.status(401).json({ error: "Unauthorized" });
+      const serviceIds = Array.isArray(req.body?.serviceIds) ? req.body.serviceIds.map((value) => String(value)) : [];
+      const notes = String(req.body?.notes || "").trim();
+      const quote = await createPortalQuote({ userId: session.userId, serviceIds, notes });
+      await sendQuoteEmails(quote).catch((err) => {
+        console.error("[portal] mail", err);
+      });
+      res.status(201).json(quote);
+    } catch (err) {
+      sendError(res, err);
+    }
+  }).catch(next);
 });
 apiRouter.get("/health", async (_req, res) => {
   if (!pool) {

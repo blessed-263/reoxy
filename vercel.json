@@ -15,6 +15,7 @@
     { "source": "/api/itineraries", "destination": "/api" },
     { "source": "/api/itineraries/:path*", "destination": "/api" },
     { "source": "/api/public/:path*", "destination": "/api" },
+    { "source": "/api/portal/:path*", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

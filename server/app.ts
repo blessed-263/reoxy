@@ -5,6 +5,16 @@ import { corsMiddleware } from './cors.ts';
 import { deleteReceipt, getReceipt, listReceipts, upsertReceipt } from './receiptsRepo.ts';
 import { deleteItinerary, getItinerary, listItineraries, upsertItinerary } from './itinerariesRepo.ts';
 import { handleLogin, handleLogout, handleMe, requireAuth } from './auth.ts';
+import {
+  handlePortalLogin,
+  handlePortalLogout,
+  handlePortalMe,
+  handlePortalSignup,
+  portalSessionFrom,
+  requirePortalAuth,
+} from './portalAuth.ts';
+import { catalogServices, createPortalQuote, listPortalQuotes } from './portalQuotes.ts';
+import { sendQuoteEmails } from './portalMail.ts';
 
 const apiRouter = Router();
 
@@ -19,6 +29,7 @@ function pingDb() {
 
 apiRouter.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path === '/health' || req.path.startsWith('/public/')) return next();
+  if (req.path.startsWith('/portal/')) return next();
   if (req.path === '/auth/login' || req.path === '/auth/logout' || req.path === '/auth/me') return next();
   void requireAuth(req, res, next).catch(next);
 });
@@ -31,6 +42,52 @@ apiRouter.post('/auth/logout', (req, res, next) => {
 });
 apiRouter.get('/auth/me', (req, res, next) => {
   void handleMe(req, res).catch(next);
+});
+
+apiRouter.post('/portal/signup', (req, res, next) => {
+  void handlePortalSignup(req, res).catch(next);
+});
+apiRouter.post('/portal/login', (req, res, next) => {
+  void handlePortalLogin(req, res).catch(next);
+});
+apiRouter.post('/portal/logout', (req, res, next) => {
+  void handlePortalLogout(req, res).catch(next);
+});
+apiRouter.get('/portal/me', (req, res, next) => {
+  void handlePortalMe(req, res).catch(next);
+});
+apiRouter.get('/portal/services', (_req, res) => {
+  res.json(catalogServices());
+});
+apiRouter.get('/portal/quotes', (req, res, next) => {
+  void requirePortalAuth(req, res, async () => {
+    try {
+      const session = portalSessionFrom(req);
+      if (!session) return res.status(401).json({ error: 'Unauthorized' });
+      res.json(await listPortalQuotes(session.userId));
+    } catch (err) {
+      sendError(res, err);
+    }
+  }).catch(next);
+});
+apiRouter.post('/portal/quotes', (req, res, next) => {
+  void requirePortalAuth(req, res, async () => {
+    try {
+      const session = portalSessionFrom(req);
+      if (!session) return res.status(401).json({ error: 'Unauthorized' });
+      const serviceIds = Array.isArray(req.body?.serviceIds)
+        ? req.body.serviceIds.map((value: unknown) => String(value))
+        : [];
+      const notes = String(req.body?.notes || '').trim();
+      const quote = await createPortalQuote({ userId: session.userId, serviceIds, notes });
+      await sendQuoteEmails(quote).catch((err) => {
+        console.error('[portal] mail', err);
+      });
+      res.status(201).json(quote);
+    } catch (err) {
+      sendError(res, err);
+    }
+  }).catch(next);
 });
 
 apiRouter.get('/health', async (_req, res) => {

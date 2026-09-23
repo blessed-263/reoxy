@@ -208,4 +208,40 @@ CREATE INDEX IF NOT EXISTS flights_itinerary_idx ON flights (itinerary_id, sort_
 CREATE INDEX IF NOT EXISTS accommodations_itinerary_idx ON accommodations (itinerary_id, sort_order);
 CREATE INDEX IF NOT EXISTS itinerary_days_itinerary_idx ON itinerary_days (itinerary_id, sort_order);
 CREATE INDEX IF NOT EXISTS itinerary_notes_itinerary_idx ON itinerary_notes (itinerary_id, kind, sort_order);
+
+CREATE TABLE IF NOT EXISTS portal_profiles (
+  user_id TEXT PRIMARY KEY,
+  full_name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS portal_quotes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES portal_profiles(user_id) ON DELETE CASCADE,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'quoted',
+  subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS portal_quote_items (
+  id TEXT PRIMARY KEY,
+  quote_id TEXT NOT NULL REFERENCES portal_quotes(id) ON DELETE CASCADE,
+  service_id TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  quantity NUMERIC(12,2) NOT NULL DEFAULT 1,
+  unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS portal_quotes_user_idx ON portal_quotes (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS portal_quote_items_quote_idx ON portal_quote_items (quote_id, sort_order);
 `;
